@@ -24,8 +24,7 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.css"],
-            "polyfills": ["zone.js"]
+            "styles": ["src/styles.css"]
           },
           "configurations": {
             "production": {
@@ -41,10 +40,7 @@
                   "maximumError": "8kB"
                 }
               ],
-              "outputHashing": "all",
-              "optimization": true,
-              "sourceMap": false,
-              "aot": true
+              "outputHashing": "all"
             },
             "development": {
               "optimization": false,

@@ -1,28 +1,14 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "buildCommand": "npm run build:all",
-  "outputDirectory": "dist",
-  "projects": {
-    "frontend": {
-      "rootDirectory": "frontend",
-      "buildCommand": "npm run build",
-      "outputDirectory": "dist"
-    },
-    "api": {
-      "rootDirectory": "api",
-      "buildCommand": "npm run build",
-      "functions": {
-        "api/**/*.ts": {
-          "memory": 1024,
-          "maxDuration": 60
-        }
-      }
-    }
-  },
+  "buildCommand": "npm run build --prefix ./frontend",
+  "installCommand": "npm install && npm install --prefix ./api",
+  "outputDirectory": "frontend/dist",
+  "framework": "angular",
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "destination": "http://localhost:3000/api/$1"
     },
     {
       "source": "/(.*)",

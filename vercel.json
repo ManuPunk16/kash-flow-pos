@@ -1,16 +1,15 @@
 {
   "version": 2,
-  "buildCommand": "npm run build:all",
+  "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist",
-  "installCommand": "npm install",
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ]
+  "installCommand": "npm install && npm install --prefix ./api",
+  "env": {
+    "ANGULAR_APP_API_URL": "@angular_app_api_url",
+    "ANGULAR_APP_FIREBASE_API_KEY": "@angular_app_firebase_api_key",
+    "ANGULAR_APP_FIREBASE_AUTH_DOMAIN": "@angular_app_firebase_auth_domain",
+    "ANGULAR_APP_FIREBASE_PROJECT_ID": "@angular_app_firebase_project_id",
+    "ANGULAR_APP_FIREBASE_STORAGE_BUCKET": "@angular_app_firebase_storage_bucket",
+    "ANGULAR_APP_FIREBASE_MESSAGING_SENDER_ID": "@angular_app_firebase_messaging_sender_id",
+    "ANGULAR_APP_FIREBASE_APP_ID": "@angular_app_firebase_app_id"
+  }
 }

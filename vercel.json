@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "buildCommand": "npm run build --prefix ./frontend",
+  "buildCommand": "cd frontend && npm install --force && npm rebuild && npm run build",
   "outputDirectory": "frontend/dist",
   "framework": "angular",
   "rewrites": [

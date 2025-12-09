@@ -1,16 +1,16 @@
 {
   "name": "kashflow-pos-api",
   "version": "1.0.0",
-  "description": "Backend Express para KashFlow POS",
-  "main": "dist/index.js",
+  "description": "Backend Vercel Functions para KashFlow POS",
+  "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "lint": "eslint src --fix"
+    "build": "tsc --noEmit",
+    "lint": "eslint functions src --fix",
+    "test": "vitest"
   },
   "dependencies": {
+    "@vercel/node": "^5.5.15",
     "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -25,12 +25,13 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/node": "^24.10.1",
+    "@types/node": "^24.10.2",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.48.1",
     "@typescript-eslint/parser": "^8.48.1",
     "eslint": "^9.39.1",
     "tsx": "^4.21.0",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.15"
   }
 }

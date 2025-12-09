@@ -2,13 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "buildCommand": "npm run build --prefix ./frontend",
-  "installCommand": "npm install && npm install --prefix ./api",
   "outputDirectory": "frontend/dist",
   "framework": "angular",
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "http://localhost:3000/api/$1"
+      "destination": "/api/$1"
     },
     {
       "source": "/(.*)",

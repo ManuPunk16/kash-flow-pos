@@ -1,4 +1,4 @@
-import { VercelRequest } from '@vercel/node';
+import { VercelRequest, VercelResponse } from '@vercel/node';
 
 declare module '@vercel/node' {
   export interface VercelRequest {

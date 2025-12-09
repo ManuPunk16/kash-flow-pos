@@ -1,7 +1,6 @@
 import '../tipos/vercel';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { verificarAutenticacion } from '../middleware/autenticacion';
-import { validar } from '../validacion/validador';
 import { esquemaCrearAbono } from '../validacion/schemas';
 import { ClientesService } from '../services/ClientesService';
 import { AbonoCliente, Cliente, Usuario } from '../models';
@@ -77,13 +76,19 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
     // ✅ POST /api/abonos - Registrar abono
     if (req.method === 'POST') {
-      const { error, value } = validar(esquemaCrearAbono)(req, res, () => {});
+      const { error, value } = esquemaCrearAbono.validate(req.body, {
+        abortEarly: false,
+        stripUnknown: true,
+      });
 
       if (error) {
         res.status(400).json({
           exito: false,
           error: 'Validación fallida',
-          detalles: error.details,
+          detalles: error.details.map((d) => ({
+            campo: d.path.join('.'),
+            mensaje: d.message,
+          })),
         });
         return;
       }

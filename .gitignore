@@ -1,32 +1,25 @@
-# Dependencias
-node_modules/
-package-lock.json
-**/package-lock.json
+# Compiled output
+/dist
+/tmp
+/out-tsc
 
-# Build outputs
-dist/
-out-tsc/
-.angular/
+# Node
+/node_modules
+npm-debug.log
+yarn-error.log
+
+# IDEs
+.vscode/
+.idea/
 
 # Environment
 .env
 .env.local
 .env.*.local
 
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
+# Angular
+.angular/cache
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Testing
-coverage/
-.nyc_output/
-
-# Logs
-*.log
-npm-debug.log*

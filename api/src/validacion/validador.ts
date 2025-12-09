@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from "express";
-import { Schema } from "joi";
+import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Schema } from 'joi';
 
 /**
  * Middleware validador genérico
@@ -7,9 +7,9 @@ import { Schema } from "joi";
  */
 export function validar(esquema: Schema) {
   return (
-    solicitud: Request,
-    respuesta: Response,
-    siguiente: NextFunction
+    solicitud: VercelRequest,
+    respuesta: VercelResponse,
+    siguiente: () => void
   ): void => {
     const { error, value } = esquema.validate(solicitud.body, {
       abortEarly: false,
@@ -18,12 +18,12 @@ export function validar(esquema: Schema) {
 
     if (error) {
       const mensajes = error.details.map((detalle) => ({
-        campo: detalle.path.join("."),
+        campo: detalle.path.join('.'),
         error: detalle.message,
       }));
 
       respuesta.status(400).json({
-        error: "Validación fallida",
+        error: 'Validación fallida',
         detalles: mensajes,
       });
       return;

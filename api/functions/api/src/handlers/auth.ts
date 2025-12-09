@@ -1,4 +1,4 @@
-import '../../../src/tipos/vercel';
+import '../../src/tipos/vercel';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import admin from 'firebase-admin';
 import axios from 'axios';

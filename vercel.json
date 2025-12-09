@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "buildCommand": "ng build --configuration production",
-  "outputDirectory": "dist/kash-flow-pos",
+  "outputDirectory": "dist/KashFlowPos",
   "framework": "angular",
   "rewrites": [
     {

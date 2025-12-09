@@ -1,10 +1,11 @@
-import { VercelRequest, VercelResponse } from "@vercel/node";
-import { verificarAutenticacion } from "../../src/middleware/autenticacion";
-import { validar } from "../../src/validacion/validador";
-import { esquemaCrearVenta } from "../../src/validacion/schemas";
-import { VentasService } from "../../src/services/VentasService";
-import { Venta, Cliente, Usuario } from "../../src/models";
-import { v4 as uuid } from "uuid";
+import '../../src/tipos/vercel';
+import { VercelRequest, VercelResponse } from '@vercel/node';
+import { verificarAutenticacion } from '../../src/middleware/autenticacion';
+import { validar } from '../../src/validacion/validador';
+import { esquemaCrearVenta } from '../../src/validacion/schemas';
+import { VentasService } from '../../src/services/VentasService';
+import { Venta, Cliente, Usuario } from '../../src/models';
+import { v4 as uuid } from 'uuid';
 
 /**
  * Vercel Function - Ventas API
@@ -12,28 +13,28 @@ import { v4 as uuid } from "uuid";
  */
 export default async (req: VercelRequest, res: VercelResponse) => {
   // ✅ CORS headers
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Origin", process.env.CORS_ORIGIN || "*");
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
   res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+    'Access-Control-Allow-Methods',
+    'GET,OPTIONS,PATCH,DELETE,POST,PUT'
   );
   res.setHeader(
-    "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
 
   // ✅ Handle preflight
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
   try {
     // ✅ Permitir GET /api/ventas/cliente/:clienteId sin autenticación (opcional)
-    const ruta = req.url || "/";
-    if (req.method === "GET" && ruta.includes("/cliente/")) {
-      const clienteId = ruta.split("/cliente/")[1]?.split("/")[0];
+    const ruta = req.url || '/';
+    if (req.method === 'GET' && ruta.includes('/cliente/')) {
+      const clienteId = ruta.split('/cliente/')[1]?.split('/')[0];
       if (clienteId) {
         const ventas = await VentasService.obtenerPorCliente(clienteId);
         res.status(200).json({
@@ -50,17 +51,17 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
     if (!req.usuario) {
       res.status(401).json({
-        error: "No autorizado",
-        mensaje: "Token no proporcionado o inválido",
+        error: 'No autorizado',
+        mensaje: 'Token no proporcionado o inválido',
       });
       return;
     }
 
     // ✅ Routing por método
     switch (req.method) {
-      case "GET":
+      case 'GET':
         // GET /api/ventas - Obtener todas las ventas
-        if (!ruta || ruta === "/") {
+        if (!ruta || ruta === '/') {
           const ventas = await VentasService.obtenerTodas();
           res.status(200).json({
             exito: true,
@@ -71,18 +72,18 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         }
 
         // GET /api/ventas/[id] - Obtener venta específica
-        const ventaId = ruta.split("/")[1];
-        if (ventaId && !ventaId.includes("cliente")) {
+        const ventaId = ruta.split('/')[1];
+        if (ventaId && !ventaId.includes('cliente')) {
           const venta = await Venta.findById(ventaId)
-            .populate("clienteId")
-            .populate("usuarioId")
-            .populate("items.productoId")
+            .populate('clienteId')
+            .populate('usuarioId')
+            .populate('items.productoId')
             .lean();
 
           if (!venta) {
             res.status(404).json({
               exito: false,
-              error: "Venta no encontrada",
+              error: 'Venta no encontrada',
             });
             return;
           }
@@ -95,7 +96,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         }
         break;
 
-      case "POST":
+      case 'POST':
         // POST /api/ventas - Crear nueva venta
         const { error, value } = esquemaCrearVenta.validate(req.body, {
           abortEarly: false,
@@ -105,9 +106,9 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         if (error) {
           res.status(400).json({
             exito: false,
-            error: "Validación fallida",
+            error: 'Validación fallida',
             detalles: error.details.map((d) => ({
-              campo: d.path.join("."),
+              campo: d.path.join('.'),
               mensaje: d.message,
             })),
           });
@@ -128,8 +129,8 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         if (!items || items.length === 0) {
           res.status(400).json({
             exito: false,
-            error: "Validación fallida",
-            mensaje: "La venta debe contener al menos un producto",
+            error: 'Validación fallida',
+            mensaje: 'La venta debe contener al menos un producto',
           });
           return;
         }
@@ -157,7 +158,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
             return {
               productoId: item.productoId,
-              nombreProducto: "", // Se llena desde BD
+              nombreProducto: '', // Se llena desde BD
               cantidad,
               precioUnitario,
               costoUnitario,
@@ -177,14 +178,14 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         if (!cliente || !usuario) {
           res.status(404).json({
             exito: false,
-            error: "Cliente o usuario no encontrado",
+            error: 'Cliente o usuario no encontrado',
           });
           return;
         }
 
         // Crear venta
         const datosVenta = {
-          numeroVenta: `VTA-${new Date().toISOString().split("T")[0]}-${uuid()
+          numeroVenta: `VTA-${new Date().toISOString().split('T')[0]}-${uuid()
             .substring(0, 8)
             .toUpperCase()}`,
           clienteId,
@@ -199,7 +200,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
           referenciaPago,
           gananciaTotal,
           observaciones,
-          estado: "completada" as const,
+          estado: 'completada' as const,
           fechaVenta: new Date(),
         };
 
@@ -207,28 +208,28 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
         res.status(201).json({
           exito: true,
-          mensaje: "Venta registrada exitosamente ✅",
+          mensaje: 'Venta registrada exitosamente ✅',
           dato: ventaCreada,
         });
         return;
 
-      case "PUT":
+      case 'PUT':
         // PUT /api/ventas/[id] - Anular venta
-        const idVenta = ruta.split("/")[1];
+        const idVenta = ruta.split('/')[1];
         if (!idVenta) {
           res.status(400).json({
             exito: false,
-            error: "ID de venta requerido",
+            error: 'ID de venta requerido',
           });
           return;
         }
 
         const { estado } = req.body;
 
-        if (estado !== "anulada") {
+        if (estado !== 'anulada') {
           res.status(400).json({
             exito: false,
-            error: "Operación no permitida",
+            error: 'Operación no permitida',
             mensaje:
               'Solo se puede cambiar el estado a "anulada". Para editar, cree una nueva venta',
           });
@@ -240,25 +241,25 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         if (!ventaExistente) {
           res.status(404).json({
             exito: false,
-            error: "Venta no encontrada",
+            error: 'Venta no encontrada',
           });
           return;
         }
 
-        if (ventaExistente.estado === "anulada") {
+        if (ventaExistente.estado === 'anulada') {
           res.status(400).json({
             exito: false,
-            error: "Venta ya anulada",
+            error: 'Venta ya anulada',
           });
           return;
         }
 
-        ventaExistente.estado = "anulada";
+        ventaExistente.estado = 'anulada';
         await ventaExistente.save();
 
         res.status(200).json({
           exito: true,
-          mensaje: "Venta anulada exitosamente",
+          mensaje: 'Venta anulada exitosamente',
           dato: ventaExistente,
         });
         return;
@@ -266,17 +267,17 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       default:
         res.status(405).json({
           exito: false,
-          error: "Método no permitido",
+          error: 'Método no permitido',
           metodo: req.method,
         });
         return;
     }
   } catch (error) {
-    console.error("❌ Error en ventas API:", error);
+    console.error('❌ Error en ventas API:', error);
     res.status(500).json({
       exito: false,
-      error: "Error al procesar solicitud",
-      mensaje: error instanceof Error ? error.message : "Error desconocido",
+      error: 'Error al procesar solicitud',
+      mensaje: error instanceof Error ? error.message : 'Error desconocido',
     });
   }
 };

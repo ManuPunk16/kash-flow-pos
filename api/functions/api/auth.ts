@@ -1,6 +1,7 @@
-import { VercelRequest, VercelResponse } from "@vercel/node";
-import admin from "firebase-admin";
-import axios from "axios";
+import '../../src/tipos/vercel';
+import { VercelRequest, VercelResponse } from '@vercel/node';
+import admin from 'firebase-admin';
+import axios from 'axios';
 
 // ✅ Inicializar Firebase una sola vez
 function inicializarFirebase() {
@@ -10,7 +11,7 @@ function inicializarFirebase() {
 
   const serviceAccount = {
     projectId: process.env.FIREBASE_PROJECT_ID,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
   };
 
@@ -21,25 +22,25 @@ function inicializarFirebase() {
 
 export default async (req: VercelRequest, res: VercelResponse) => {
   // ✅ CORS
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Origin", process.env.CORS_ORIGIN || "*");
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
   res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+    'Access-Control-Allow-Methods',
+    'GET,OPTIONS,PATCH,DELETE,POST,PUT'
   );
   res.setHeader(
-    "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
 
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
   // ✅ Solo POST a /api/auth/login-testing
-  if (req.method !== "POST" || !req.url?.includes("login-testing")) {
-    res.status(405).json({ exito: false, error: "Método no permitido" });
+  if (req.method !== 'POST' || !req.url?.includes('login-testing')) {
+    res.status(405).json({ exito: false, error: 'Método no permitido' });
     return;
   }
 
@@ -51,7 +52,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (!email || !password) {
       res.status(400).json({
         exito: false,
-        error: "Email y contraseña requeridos",
+        error: 'Email y contraseña requeridos',
       });
       return;
     }
@@ -60,8 +61,8 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (!firebaseApiKey) {
       res.status(500).json({
         exito: false,
-        error: "Error de configuración",
-        mensaje: "FIREBASE_API_KEY no está configurado",
+        error: 'Error de configuración',
+        mensaje: 'FIREBASE_API_KEY no está configurado',
       });
       return;
     }
@@ -81,14 +82,14 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     const decodificado = await admin.auth().verifyIdToken(idToken);
 
     // ✅ Validar que sea admin
-    const adminUids = (process.env.ADMIN_UIDS || "")
-      .split(",")
+    const adminUids = (process.env.ADMIN_UIDS || '')
+      .split(',')
       .map((id) => id.trim());
 
     if (!adminUids.includes(decodificado.uid)) {
       res.status(403).json({
         exito: false,
-        error: "Acceso denegado",
+        error: 'Acceso denegado',
         mensaje: `El usuario ${email} no tiene permisos de administrador`,
       });
       return;
@@ -96,7 +97,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
     res.status(200).json({
       exito: true,
-      mensaje: "Login exitoso ✅",
+      mensaje: 'Login exitoso ✅',
       token: idToken,
       uid,
       email: decodificado.email,
@@ -104,23 +105,23 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     });
   } catch (error) {
     const mensaje =
-      error instanceof Error ? error.message : "Error desconocido";
+      error instanceof Error ? error.message : 'Error desconocido';
 
     if (
-      mensaje.includes("INVALID_LOGIN_CREDENTIALS") ||
-      mensaje.includes("invalid password")
+      mensaje.includes('INVALID_LOGIN_CREDENTIALS') ||
+      mensaje.includes('invalid password')
     ) {
       res.status(401).json({
         exito: false,
-        error: "Credenciales inválidas",
-        mensaje: "Email o contraseña incorrectos",
+        error: 'Credenciales inválidas',
+        mensaje: 'Email o contraseña incorrectos',
       });
       return;
     }
 
     res.status(400).json({
       exito: false,
-      error: "Error al generar token",
+      error: 'Error al generar token',
       mensaje,
     });
   }

@@ -1,9 +1,10 @@
-import { VercelRequest, VercelResponse } from "@vercel/node";
-import { verificarAutenticacion } from "../../src/middleware/autenticacion";
-import { validar } from "../../src/validacion/validador";
-import { esquemaCrearAbono } from "../../src/validacion/schemas";
-import { ClientesService } from "../../src/services/ClientesService";
-import { AbonoCliente, Cliente, Usuario } from "../../src/models";
+import '../../src/tipos/vercel';
+import { VercelRequest, VercelResponse } from '@vercel/node';
+import { verificarAutenticacion } from '../../src/middleware/autenticacion';
+import { validar } from '../../src/validacion/validador';
+import { esquemaCrearAbono } from '../../src/validacion/schemas';
+import { ClientesService } from '../../src/services/ClientesService';
+import { AbonoCliente, Cliente, Usuario } from '../../src/models';
 
 /**
  * Vercel Function - Abonos API
@@ -11,19 +12,19 @@ import { AbonoCliente, Cliente, Usuario } from "../../src/models";
  */
 export default async (req: VercelRequest, res: VercelResponse) => {
   // ✅ CORS headers
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Origin", process.env.CORS_ORIGIN || "*");
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
   res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+    'Access-Control-Allow-Methods',
+    'GET,OPTIONS,PATCH,DELETE,POST,PUT'
   );
   res.setHeader(
-    "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
 
   // ✅ Handle preflight
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
@@ -33,18 +34,18 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     await verificarAutenticacion(req, res, () => {});
 
     if (!req.usuario) {
-      res.status(401).json({ error: "No autorizado" });
+      res.status(401).json({ error: 'No autorizado' });
       return;
     }
 
-    const ruta = req.url || "/";
+    const ruta = req.url || '/';
 
     // ✅ GET /api/abonos
-    if (req.method === "GET") {
-      if (ruta === "/" || ruta === "") {
+    if (req.method === 'GET') {
+      if (ruta === '/' || ruta === '') {
         const abonos = await AbonoCliente.find()
-          .populate("clienteId")
-          .populate("usuarioId")
+          .populate('clienteId')
+          .populate('usuarioId')
           .sort({ fechaPago: -1 })
           .lean();
 
@@ -57,8 +58,8 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       }
 
       // GET /api/abonos/cliente/[clienteId]
-      if (ruta.includes("/cliente/")) {
-        const clienteId = ruta.split("/cliente/")[1]?.split("/")[0];
+      if (ruta.includes('/cliente/')) {
+        const clienteId = ruta.split('/cliente/')[1]?.split('/')[0];
         if (clienteId) {
           const abonos = await AbonoCliente.find({ clienteId })
             .sort({ fechaPago: -1 })
@@ -75,13 +76,13 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
 
     // ✅ POST /api/abonos - Registrar abono
-    if (req.method === "POST") {
+    if (req.method === 'POST') {
       const { error, value } = validar(esquemaCrearAbono)(req, res, () => {});
 
       if (error) {
         res.status(400).json({
           exito: false,
-          error: "Validación fallida",
+          error: 'Validación fallida',
           detalles: error.details,
         });
         return;
@@ -96,7 +97,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       if (!cliente) {
         res.status(404).json({
           exito: false,
-          error: "Cliente no encontrado",
+          error: 'Cliente no encontrado',
         });
         return;
       }
@@ -104,8 +105,8 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       if (cliente.saldoActual === 0) {
         res.status(400).json({
           exito: false,
-          error: "Cliente sin deuda",
-          mensaje: "Este cliente no tiene saldo pendiente",
+          error: 'Cliente sin deuda',
+          mensaje: 'Este cliente no tiene saldo pendiente',
         });
         return;
       }
@@ -113,7 +114,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       if (monto > cliente.saldoActual) {
         res.status(400).json({
           exito: false,
-          error: "Monto mayor que deuda",
+          error: 'Monto mayor que deuda',
           mensaje: `El cliente debe $${cliente.saldoActual}. Máximo: $${cliente.saldoActual}`,
         });
         return;
@@ -126,7 +127,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       if (!usuario) {
         res.status(401).json({
           exito: false,
-          error: "Usuario no encontrado",
+          error: 'Usuario no encontrado',
         });
         return;
       }
@@ -158,7 +159,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
       res.status(201).json({
         exito: true,
-        mensaje: "Abono registrado exitosamente ✅",
+        mensaje: 'Abono registrado exitosamente ✅',
         dato: {
           abono: nuevoAbono,
           saldoAnterior,
@@ -172,13 +173,13 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       return;
     }
 
-    res.status(405).json({ exito: false, error: "Método no permitido" });
+    res.status(405).json({ exito: false, error: 'Método no permitido' });
   } catch (error) {
-    console.error("❌ Error en abonos API:", error);
+    console.error('❌ Error en abonos API:', error);
     res.status(500).json({
       exito: false,
-      error: "Error al procesar solicitud",
-      mensaje: error instanceof Error ? error.message : "Error desconocido",
+      error: 'Error al procesar solicitud',
+      mensaje: error instanceof Error ? error.message : 'Error desconocido',
     });
   }
 };

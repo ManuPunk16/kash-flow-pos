@@ -1,12 +1,12 @@
-import '../src/tipos/vercel';
+import '../tipos/vercel';
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { verificarAutenticacion } from '../src/middleware/autenticacion';
+import { verificarAutenticacion } from '../middleware/autenticacion';
 import {
   esquemaCrearCliente,
   esquemaActualizarCliente,
-} from '../src/validacion/schemas';
-import { ClientesService } from '../src/services/ClientesService';
-import { Cliente } from '../src/models';
+} from '../validacion/schemas';
+import { ClientesService } from '../services/ClientesService';
+import { Cliente } from '../models';
 
 export default async (req: VercelRequest, res: VercelResponse) => {
   // ✅ CORS

@@ -1,10 +1,10 @@
-import '../src/tipos/vercel';
+import '../tipos/vercel';
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { verificarAutenticacion } from '../src/middleware/autenticacion';
-import { validar } from '../src/validacion/validador';
-import { esquemaCrearVenta } from '../src/validacion/schemas';
-import { VentasService } from '../src/services/VentasService';
-import { Venta, Cliente, Usuario } from '../src/models';
+import { verificarAutenticacion } from '../middleware/autenticacion';
+import { validar } from '../validacion/validador';
+import { esquemaCrearVenta } from '../validacion/schemas';
+import { VentasService } from '../services/VentasService';
+import { Venta, Cliente, Usuario } from '../models';
 import { v4 as uuid } from 'uuid';
 
 /**

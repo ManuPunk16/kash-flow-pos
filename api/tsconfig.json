@@ -5,16 +5,18 @@
     "moduleResolution": "bundler",
     "lib": ["ES2022"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./", // CAMBIO IMPORTANTE: rootDir en la raíz de api
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true
+    "baseUrl": ".",
+    "paths": {
+      "*": ["src/*"]
+    },
+    "typeRoots": ["./node_modules/@types", "./src/tipos"] // CAMBIO IMPORTANTE
   },
-  "include": ["src"],
+  "include": ["src/**/*", "functions/**/*"], // Incluir ambas carpetas
   "exclude": ["node_modules", "dist"]
 }

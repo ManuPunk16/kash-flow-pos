@@ -1,7 +1,7 @@
-import '../src/tipos/vercel';
+import '../tipos/vercel';
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { verificarAutenticacion } from '../src/middleware/autenticacion';
-import { Cliente } from '../src/models';
+import { verificarAutenticacion } from '../middleware/autenticacion';
+import { Cliente } from '../models';
 
 /**
  * Vercel Function - Intereses API

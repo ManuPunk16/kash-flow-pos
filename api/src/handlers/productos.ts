@@ -1,13 +1,13 @@
-import '../src/tipos/vercel';
+import '../tipos/vercel';
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { verificarAutenticacion } from '../src/middleware/autenticacion';
-import { validar } from '../src/validacion/validador';
+import { verificarAutenticacion } from '../middleware/autenticacion';
+import { validar } from '../validacion/validador';
 import {
   esquemaCrearProducto,
   esquemaActualizarProducto,
-} from '../src/validacion/schemas';
-import { ProductosService } from '../src/services/ProductosService';
-import { Producto } from '../src/models';
+} from '../validacion/schemas';
+import { ProductosService } from '../services/ProductosService';
+import { Producto } from '../models';
 
 /**
  * Vercel Function - Productos API

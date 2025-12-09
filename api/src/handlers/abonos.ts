@@ -1,10 +1,10 @@
-import '../src/tipos/vercel';
+import '../tipos/vercel';
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { verificarAutenticacion } from '../src/middleware/autenticacion';
-import { validar } from '../src/validacion/validador';
-import { esquemaCrearAbono } from '../src/validacion/schemas';
-import { ClientesService } from '../src/services/ClientesService';
-import { AbonoCliente, Cliente, Usuario } from '../src/models';
+import { verificarAutenticacion } from '../middleware/autenticacion';
+import { validar } from '../validacion/validador';
+import { esquemaCrearAbono } from '../validacion/schemas';
+import { ClientesService } from '../services/ClientesService';
+import { AbonoCliente, Cliente, Usuario } from '../models';
 
 /**
  * Vercel Function - Abonos API

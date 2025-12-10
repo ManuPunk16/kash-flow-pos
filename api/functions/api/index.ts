@@ -1,13 +1,13 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { AuthenticatedRequest } from '../../src/tipos/AuthenticatedRequest';
+import { AuthenticatedRequest } from '../../_lib/tipos/AuthenticatedRequest';
 
-// Importar handlers desde src/handlers
-import abonosHandler from '../../src/handlers/abonos';
-import clientesHandler from '../../src/handlers/clientes';
-import productosHandler from '../../src/handlers/productos';
-import ventasHandler from '../../src/handlers/ventas';
-import interesesHandler from '../../src/handlers/intereses';
-import authHandler from '../../src/handlers/auth';
+// Importar handlers desde _lib/handlers
+import abonosHandler from '../../_lib/handlers/abonos';
+import clientesHandler from '../../_lib/handlers/clientes';
+import productosHandler from '../../_lib/handlers/productos';
+import ventasHandler from '../../_lib/handlers/ventas';
+import interesesHandler from '../../_lib/handlers/intereses';
+import authHandler from '../../_lib/handlers/auth';
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);

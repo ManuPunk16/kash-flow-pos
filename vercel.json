@@ -8,8 +8,7 @@
     "api/functions/api/index.ts": {
       "runtime": "nodejs20.x",
       "memory": 1024,
-      "maxDuration": 10,
-      "includeFiles": "{api/src/**,api/node_modules/**,api/package.json,api/tsconfig.json}"
+      "maxDuration": 10
     }
   },
   "rewrites": [

@@ -4,6 +4,9 @@
   "description": "Backend Vercel Functions para KashFlow POS",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "build": "tsc --noEmit",
     "lint": "eslint functions src --fix",

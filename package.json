@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Sistema POS para tienda pequeña",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "start": "ng serve",
     "build": "ng build --configuration production && npm run build --prefix ./api",

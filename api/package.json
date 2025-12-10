@@ -13,7 +13,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@vercel/node": "^2.3.0",
+    "@vercel/node": "^4.0.0",
     "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -23,13 +23,13 @@
     "joi": "^18.0.2",
     "joi-objectid": "^4.0.2",
     "mongoose": "^9.0.0",
+    "path-to-regexp": "^8.3.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^24.10.3",
-    "@types/path-to-regexp": "^1.0.29",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.48.1",
     "@typescript-eslint/parser": "^8.48.1",

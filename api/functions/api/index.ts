@@ -12,6 +12,32 @@ import authHandler from '../../_lib/handlers/auth';
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
 
+  // 🛡️ MITIGACIÓN 1: Limitar longitud de URL (previene ReDoS en path-to-regexp)
+  if (pathname.length > 2000) {
+    res.status(414).json({
+      error: 'URI demasiado largo',
+      mensaje: 'La URL excede el límite permitido',
+    });
+    return;
+  }
+
+  // 🛡️ MITIGACIÓN 2: Validar patrones sospechosos
+  const patronesSospechosos = [
+    /\$\{/, // Template strings
+    /(.{50,})\1{5,}/, // Repeticiones excesivas
+    /<script/i, // XSS
+    /javascript:/i, // XSS
+    /on\w+\s*=/i, // Event handlers
+  ];
+
+  if (patronesSospechosos.some((patron) => patron.test(pathname))) {
+    res.status(400).json({
+      error: 'Patrón de URL no permitido',
+      mensaje: 'La URL contiene caracteres sospechosos',
+    });
+    return;
+  }
+
   // CORS Global
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
@@ -30,21 +56,42 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   }
 
   try {
-    if (pathname.startsWith('/api/abonos'))
-      return await abonosHandler(req, res);
-    if (pathname.startsWith('/api/clientes'))
-      return await clientesHandler(req, res);
-    if (pathname.startsWith('/api/productos'))
-      return await productosHandler(req, res);
-    if (pathname.startsWith('/api/ventas'))
-      return await ventasHandler(req, res);
-    if (pathname.startsWith('/api/intereses'))
-      return await interesesHandler(req, res);
-    if (pathname.startsWith('/api/auth')) return await authHandler(req, res);
+    // 🛡️ MITIGACIÓN 3: Timeout de 10 segundos para evitar requests colgados
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timeout')), 10000)
+    );
 
-    res.status(404).json({ error: 'Ruta no encontrada', pathname });
+    const handleRequest = async () => {
+      if (pathname.startsWith('/api/abonos'))
+        return await abonosHandler(req, res);
+      if (pathname.startsWith('/api/clientes'))
+        return await clientesHandler(req, res);
+      if (pathname.startsWith('/api/productos'))
+        return await productosHandler(req, res);
+      if (pathname.startsWith('/api/ventas'))
+        return await ventasHandler(req, res);
+      if (pathname.startsWith('/api/intereses'))
+        return await interesesHandler(req, res);
+      if (pathname.startsWith('/api/auth')) return await authHandler(req, res);
+
+      res.status(404).json({ error: 'Ruta no encontrada', pathname });
+    };
+
+    await Promise.race([handleRequest(), timeout]);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('❌ Error en API:', error);
+
+    if (error instanceof Error && error.message === 'Request timeout') {
+      res.status(408).json({
+        error: 'Timeout',
+        mensaje: 'La solicitud tardó demasiado tiempo',
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: 'Error interno del servidor',
+      mensaje: error instanceof Error ? error.message : 'Error desconocido',
+    });
   }
 };

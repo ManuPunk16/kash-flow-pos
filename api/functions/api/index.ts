@@ -1,8 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import '../../src/tipos/vercel';
+import { AuthenticatedRequest } from '../../src/tipos/AuthenticatedRequest';
 
 // Importar handlers desde src/handlers
-// Nota: Usamos rutas relativas saliendo de functions/api hacia src/handlers
 import abonosHandler from '../../src/handlers/abonos';
 import clientesHandler from '../../src/handlers/clientes';
 import productosHandler from '../../src/handlers/productos';
@@ -10,7 +9,7 @@ import ventasHandler from '../../src/handlers/ventas';
 import interesesHandler from '../../src/handlers/intereses';
 import authHandler from '../../src/handlers/auth';
 
-export default async (req: VercelRequest, res: VercelResponse) => {
+export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
 
   // CORS Global

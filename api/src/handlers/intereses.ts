@@ -1,4 +1,4 @@
-import '../tipos/vercel';
+import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { verificarAutenticacion } from '../middleware/autenticacion';
 import { Cliente } from '../models';
@@ -7,7 +7,7 @@ import { Cliente } from '../models';
  * Vercel Function - Intereses API
  * Maneja la lógica de interés compuesto (20% mensual)
  */
-export default async (req: VercelRequest, res: VercelResponse) => {
+export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   // ✅ CORS headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');

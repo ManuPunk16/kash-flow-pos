@@ -1,51 +1,81 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest';
 import admin from 'firebase-admin';
-import '../tipos/vercel'; // Importante para reconocer .usuario
+
+/**
+ * Middleware de autenticación usando Firebase Admin SDK
+ * Valida el token JWT de Firebase y verifica permisos de admin
+ */
+
+function inicializarFirebase() {
+  try {
+    if (!admin.apps || admin.apps.length === 0) {
+      const serviceAccount = {
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      };
+
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount as any),
+      });
+
+      console.log('✅ Firebase Admin inicializado correctamente');
+    }
+  } catch (error) {
+    console.error('❌ Error inicializando Firebase Admin:', error);
+    throw error;
+  }
+}
 
 // Cambiar firmas de Request/Response/NextFunction a tipos compatibles
 export async function verificarAutenticacion(
-  solicitud: VercelRequest,
+  solicitud: AuthenticatedRequest,
   respuesta: VercelResponse,
   siguiente: () => void
 ): Promise<void> {
   try {
-    if (!admin.apps || admin.apps.length === 0) {
-      respuesta.status(500).json({
-        error: 'Error interno',
-        mensaje: 'Firebase no inicializado',
-      });
-      return;
-    }
+    inicializarFirebase();
 
-    const token = solicitud.headers.authorization?.split(' ')[1];
-    if (!token) {
+    const authHeader = solicitud.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       respuesta.status(401).json({
         error: 'No autorizado',
-        mensaje: 'Token faltante',
+        mensaje: 'Token no proporcionado',
       });
       return;
     }
 
+    const token = authHeader.split('Bearer ')[1];
     const decodificado = await admin.auth().verifyIdToken(token);
+
+    // Validar que el UID esté en la lista de admins
     const adminUids = (process.env.ADMIN_UIDS || '')
       .split(',')
-      .map((uid) => uid.trim());
+      .map((id) => id.trim());
 
     if (!adminUids.includes(decodificado.uid)) {
-      respuesta.status(403).json({ error: 'Acceso denegado' });
+      respuesta.status(403).json({
+        error: 'Acceso denegado',
+        mensaje: 'Usuario sin permisos de administrador',
+      });
       return;
     }
 
-    // Ahora TypeScript no se quejará gracias a vercel.d.ts
+    // Inyectar usuario en request
     solicitud.usuario = {
       uid: decodificado.uid,
       email: decodificado.email || '',
-      esAdmin: true,
+      esAdmin: adminUids.includes(decodificado.uid),
     };
 
     siguiente();
   } catch (error) {
-    console.error('Auth error:', error);
-    respuesta.status(401).json({ error: 'Token inválido' });
+    console.error('❌ Error verificando token:', error);
+    respuesta.status(401).json({
+      error: 'Token inválido',
+      mensaje: error instanceof Error ? error.message : 'Error desconocido',
+    });
   }
 }

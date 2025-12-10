@@ -1,4 +1,4 @@
-import '../tipos/vercel';
+import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { verificarAutenticacion } from '../middleware/autenticacion';
 import {
@@ -8,7 +8,7 @@ import {
 import { ClientesService } from '../services/ClientesService';
 import { Cliente } from '../models';
 
-export default async (req: VercelRequest, res: VercelResponse) => {
+export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   // ✅ CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');

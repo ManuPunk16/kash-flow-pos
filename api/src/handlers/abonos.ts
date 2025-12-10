@@ -1,4 +1,4 @@
-import '../tipos/vercel';
+import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { verificarAutenticacion } from '../middleware/autenticacion';
 import { esquemaCrearAbono } from '../validacion/schemas';
@@ -9,7 +9,7 @@ import { AbonoCliente, Cliente, Usuario } from '../models';
  * Vercel Function - Abonos API
  * Maneja GET, POST para abonos a clientes
  */
-export default async (req: VercelRequest, res: VercelResponse) => {
+export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   // ✅ CORS headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');

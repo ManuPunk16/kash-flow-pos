@@ -15,11 +15,11 @@
     "paths": {
       "@/*": ["src/*"]
     },
-    "typeRoots": ["./node_modules/@types", "./src/tipos"],
     "types": ["node"],
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "composite": false
   },
   "include": ["src/**/*", "functions/**/*"],
   "exclude": ["node_modules", "dist", "**/*.spec.ts"]

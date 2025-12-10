@@ -1,4 +1,4 @@
-import '../tipos/vercel';
+import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import admin from 'firebase-admin';
 import axios from 'axios';
@@ -20,7 +20,7 @@ function inicializarFirebase() {
   });
 }
 
-export default async (req: VercelRequest, res: VercelResponse) => {
+export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   // ✅ CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');

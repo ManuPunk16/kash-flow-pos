@@ -1,13 +1,20 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "buildCommand": "ng build --configuration production",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist/KashFlowPos",
   "framework": "angular",
+  "functions": {
+    "api/functions/api/index.ts": {
+      "runtime": "nodejs20.x",
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/api/:path*",
+      "destination": "/api/functions/api/index.ts"
     },
     {
       "source": "/(.*)",

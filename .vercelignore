@@ -1,0 +1,22 @@
+# Ignorar carpetas que NO son funciones serverless
+
+api/src/handlers
+api/src/middleware
+api/src/models
+api/src/services
+api/src/tipos
+api/src/utils
+api/src/validacion
+
+# Archivos de configuración
+
+api/tsconfig.json
+api/.env
+api/.env.example
+api/README.md
+api/package-lock.json
+
+# Build artifacts
+
+api/dist
+api/node_modules

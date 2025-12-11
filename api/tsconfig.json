@@ -13,13 +13,14 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["_lib/*"]
     },
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "composite": false
+    "composite": false,
+    "types": ["node"]
   },
-  "include": ["src/**/*", "functions/**/*", "_lib/**/*"],
+  "include": ["_lib/**/*", "functions/**/*"],
   "exclude": ["node_modules", "dist", "**/*.spec.ts"]
 }

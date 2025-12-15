@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "ng serve",
-    "build": "ng build --configuration production && npm run build --prefix ./api",
+    "build": "ng build --configuration production && cd api && npm install && npm run build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "ng lint",

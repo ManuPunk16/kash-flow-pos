@@ -1,12 +1,12 @@
-import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest';
+import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest.js';
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { verificarAutenticacion } from '../middleware/autenticacion';
-import { validar } from '../validacion/validador';
+import { verificarAutenticacion } from '../middleware/autenticacion.js';
+import { validar } from '../validacion/validador.js';
 import {
   esquemaCrearProducto,
   esquemaActualizarProducto,
-} from '../validacion/schemas';
-import { ProductosService } from '../services/ProductosService';
+} from '../validacion/schemas.js';
+import { ProductosService } from '../services/ProductosService.js';
 import { Producto } from '../models';
 
 /**

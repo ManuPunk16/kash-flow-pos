@@ -1,4 +1,4 @@
-import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest';
+import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest.js';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import admin from 'firebase-admin';
 import axios from 'axios';

@@ -1,11 +1,11 @@
-import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest';
+import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest.js';
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { verificarAutenticacion } from '../middleware/autenticacion';
+import { verificarAutenticacion } from '../middleware/autenticacion.js';
 import {
   esquemaCrearCliente,
   esquemaActualizarCliente,
-} from '../validacion/schemas';
-import { ClientesService } from '../services/ClientesService';
+} from '../validacion/schemas.js';
+import { ClientesService } from '../services/ClientesService.js';
 import { Cliente } from '../models';
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {

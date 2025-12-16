@@ -1,9 +1,9 @@
-import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest';
+import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest.js';
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { verificarAutenticacion } from '../middleware/autenticacion';
-import { validar } from '../validacion/validador';
-import { esquemaCrearVenta } from '../validacion/schemas';
-import { VentasService } from '../services/VentasService';
+import { verificarAutenticacion } from '../middleware/autenticacion.js';
+import { validar } from '../validacion/validador.js';
+import { esquemaCrearVenta } from '../validacion/schemas.js';
+import { VentasService } from '../services/VentasService.js';
 import { Venta, Cliente, Usuario } from '../models';
 import { v4 as uuid } from 'uuid';
 

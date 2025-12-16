@@ -1,8 +1,8 @@
-import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest';
+import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest.js';
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { verificarAutenticacion } from '../middleware/autenticacion';
-import { esquemaCrearAbono } from '../validacion/schemas';
-import { ClientesService } from '../services/ClientesService';
+import { verificarAutenticacion } from '../middleware/autenticacion.js';
+import { esquemaCrearAbono } from '../validacion/schemas.js';
+import { ClientesService } from '../services/ClientesService.js';
 import { AbonoCliente, Cliente, Usuario } from '../models';
 
 /**

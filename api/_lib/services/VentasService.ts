@@ -1,6 +1,6 @@
 import { Venta, type IVenta, Cliente, Producto } from '../models';
-import { ProductosService } from './ProductosService';
-import { ClientesService } from './ClientesService';
+import { ProductosService } from './ProductosService.js';
+import { ClientesService } from './ClientesService.js';
 
 export class VentasService {
   /**
@@ -27,7 +27,9 @@ export class VentasService {
         item.cantidad
       );
       if (!hayStock) {
-        throw new Error(`Stock insuficiente para producto: ${item.nombreProducto}`);
+        throw new Error(
+          `Stock insuficiente para producto: ${item.nombreProducto}`
+        );
       }
     }
 
@@ -36,12 +38,18 @@ export class VentasService {
 
     // Descontar stock
     for (const item of venta.items) {
-      await ProductosService.descontarStock(item.productoId.toString(), item.cantidad);
+      await ProductosService.descontarStock(
+        item.productoId.toString(),
+        item.cantidad
+      );
     }
 
     // Si es venta a fiado, actualizar saldo del cliente
     if (venta.metodoPago === 'fiado') {
-      await ClientesService.actualizarSaldoVenta(venta.clienteId.toString(), venta.total);
+      await ClientesService.actualizarSaldoVenta(
+        venta.clienteId.toString(),
+        venta.total
+      );
     }
 
     return venta;
@@ -57,7 +65,10 @@ export class VentasService {
   /**
    * Obtener ventas por fecha
    */
-  static async obtenerPorFecha(fechaInicio: Date, fechaFin: Date): Promise<IVenta[]> {
+  static async obtenerPorFecha(
+    fechaInicio: Date,
+    fechaFin: Date
+  ): Promise<IVenta[]> {
     return await Venta.find({
       fechaVenta: {
         $gte: fechaInicio,
@@ -69,7 +80,10 @@ export class VentasService {
   /**
    * Calcular ganancia total de un período
    */
-  static async calcularGanancia(fechaInicio: Date, fechaFin: Date): Promise<number> {
+  static async calcularGanancia(
+    fechaInicio: Date,
+    fechaFin: Date
+  ): Promise<number> {
     const resultado = await Venta.aggregate([
       {
         $match: {

@@ -1,3 +1,3 @@
-export * from "./respuestas";
-export * from "./errores";
-export * from "./constantes";
+export * from './respuestas.js';
+export * from './errores.js';
+export * from './constantes.js';

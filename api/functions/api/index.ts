@@ -62,6 +62,25 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
     );
 
     const handleRequest = async () => {
+      // ✅ NUEVO: Health check endpoint
+      if (pathname === '/api' || pathname === '/api/') {
+        res.status(200).json({
+          exito: true,
+          mensaje: '✅ KashFlow POS API funcionando correctamente',
+          version: '1.0.0',
+          endpoints: {
+            auth: '/api/auth/login-testing',
+            productos: '/api/productos',
+            clientes: '/api/clientes',
+            ventas: '/api/ventas',
+            abonos: '/api/abonos',
+            intereses: '/api/intereses',
+          },
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
       if (pathname.startsWith('/api/abonos'))
         return await abonosHandler(req, res);
       if (pathname.startsWith('/api/clientes'))
@@ -74,7 +93,11 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         return await interesesHandler(req, res);
       if (pathname.startsWith('/api/auth')) return await authHandler(req, res);
 
-      res.status(404).json({ error: 'Ruta no encontrada', pathname });
+      res.status(404).json({
+        error: 'Ruta no encontrada',
+        pathname,
+        sugerencia: 'Prueba con /api/productos, /api/clientes, etc.',
+      });
     };
 
     await Promise.race([handleRequest(), timeout]);

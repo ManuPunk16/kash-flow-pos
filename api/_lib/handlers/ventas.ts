@@ -4,7 +4,7 @@ import { verificarAutenticacion } from '../middleware/autenticacion.js';
 import { validar } from '../validacion/validador.js';
 import { esquemaCrearVenta } from '../validacion/schemas.js';
 import { VentasService } from '../services/VentasService.js';
-import { Venta, Cliente, Usuario } from '../models';
+import { Venta, Cliente, Usuario } from '../models/index.js';
 import { v4 as uuid } from 'uuid';
 
 /**

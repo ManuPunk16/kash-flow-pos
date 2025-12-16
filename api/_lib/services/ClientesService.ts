@@ -1,4 +1,4 @@
-import { Cliente, type ICliente } from '../models';
+import { Cliente, type ICliente } from '../models/index.js';
 
 export class ClientesService {
   /**

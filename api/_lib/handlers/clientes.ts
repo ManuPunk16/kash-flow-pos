@@ -6,7 +6,7 @@ import {
   esquemaActualizarCliente,
 } from '../validacion/schemas.js';
 import { ClientesService } from '../services/ClientesService.js';
-import { Cliente } from '../models';
+import { Cliente } from '../models/index.js';
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   // ✅ CORS

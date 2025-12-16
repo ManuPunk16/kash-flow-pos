@@ -1,5 +1,5 @@
-import Joi from "joi";
-import { Cliente, Producto, Proveedor } from "../models";
+import Joi from 'joi';
+import { Cliente, Producto, Proveedor } from '../models/index.js';
 
 /**
  * Esquemas de validación para todas las entidades
@@ -17,7 +17,7 @@ export const esquemaCrearProducto = Joi.object({
     .external(async (valor) => {
       const existe = await Producto.findOne({ codigo: valor });
       if (existe) {
-        throw new Error("El código de producto ya existe");
+        throw new Error('El código de producto ya existe');
       }
     }),
   nombre: Joi.string().required().min(3).max(200),
@@ -68,7 +68,7 @@ export const esquemaCrearCliente = Joi.object({
     .external(async (valor) => {
       const existe = await Cliente.findOne({ identificacion: valor });
       if (existe) {
-        throw new Error("La identificación ya está registrada");
+        throw new Error('La identificación ya está registrada');
       }
     }),
   direccion: Joi.string().optional().max(200),
@@ -112,7 +112,7 @@ export const esquemaCrearVenta = Joi.object({
   descuento: Joi.number().optional().min(0).precision(2).default(0),
   metodoPago: Joi.string()
     .required()
-    .valid("fiado", "efectivo", "transferencia"),
+    .valid('fiado', 'efectivo', 'transferencia'),
   referenciaPago: Joi.string().optional().max(100),
   observaciones: Joi.string().optional().max(500),
 }).unknown(false);
@@ -128,7 +128,7 @@ export const esquemaCrearAbono = Joi.object({
   monto: Joi.number().required().positive().precision(2),
   metodoPago: Joi.string()
     .required()
-    .valid("efectivo", "transferencia", "cheque"),
+    .valid('efectivo', 'transferencia', 'cheque'),
   referenciaPago: Joi.string().optional().max(100),
   observaciones: Joi.string().optional().max(500),
 }).unknown(false);
@@ -150,7 +150,7 @@ export const esquemaCrearProveedor = Joi.object({
     .external(async (valor) => {
       const existe = await Proveedor.findOne({ nit: valor });
       if (existe) {
-        throw new Error("El NIT del proveedor ya está registrado");
+        throw new Error('El NIT del proveedor ya está registrado');
       }
     }),
   terminoPago: Joi.number().optional().min(1).max(180).integer().default(30),
@@ -179,7 +179,7 @@ export const esquemaCrearPagoProveedor = Joi.object({
   monto: Joi.number().required().positive().precision(2),
   metodoPago: Joi.string()
     .required()
-    .valid("transferencia", "efectivo", "cheque"),
+    .valid('transferencia', 'efectivo', 'cheque'),
   referenciaPago: Joi.string().optional().max(100),
   observaciones: Joi.string().optional().max(500),
 }).unknown(false);

@@ -1,4 +1,4 @@
-import { Producto, type IProducto } from '../models';
+import { Producto, type IProducto } from '../models/index.js';
 
 export class ProductosService {
   /**
@@ -26,7 +26,10 @@ export class ProductosService {
   /**
    * Actualizar producto
    */
-  static async actualizar(id: string, datos: Partial<IProducto>): Promise<IProducto | null> {
+  static async actualizar(
+    id: string,
+    datos: Partial<IProducto>
+  ): Promise<IProducto | null> {
     return await Producto.findByIdAndUpdate(id, datos, { new: true });
   }
 

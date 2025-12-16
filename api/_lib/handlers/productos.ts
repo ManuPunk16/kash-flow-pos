@@ -7,7 +7,7 @@ import {
   esquemaActualizarProducto,
 } from '../validacion/schemas.js';
 import { ProductosService } from '../services/ProductosService.js';
-import { Producto } from '../models';
+import { Producto } from '../models/index.js';
 
 /**
  * Vercel Function - Productos API

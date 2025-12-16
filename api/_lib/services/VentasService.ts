@@ -1,4 +1,4 @@
-import { Venta, type IVenta, Cliente, Producto } from '../models';
+import { Venta, type IVenta, Cliente, Producto } from '../models/index.js';
 import { ProductosService } from './ProductosService.js';
 import { ClientesService } from './ClientesService.js';
 

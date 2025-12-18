@@ -1,7 +1,6 @@
 import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest.js';
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { VercelResponse } from '@vercel/node';
 import { verificarAutenticacion } from '../middleware/autenticacion.js';
-import { validar } from '../validacion/validador.js';
 import {
   esquemaCrearProducto,
   esquemaActualizarProducto,
@@ -9,12 +8,7 @@ import {
 import { ProductosService } from '../services/ProductosService.js';
 import { Producto } from '../models/index.js';
 
-/**
- * Vercel Function - Productos API
- * Maneja GET, POST, PUT, DELETE para productos
- */
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
-  // ✅ CORS headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
   res.setHeader(
@@ -26,29 +20,40 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
 
-  // ✅ Handle preflight
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
   try {
-    // ✅ Autenticación (excepto para rutas públicas)
-    await verificarAutenticacion(req, res, () => {});
+    // ✅ Autenticación obligatoria
+    let autenticado = false;
+    await verificarAutenticacion(req, res, () => {
+      autenticado = true;
+    });
 
-    if (!req.usuario) {
-      res.status(401).json({
-        error: 'No autorizado',
-        mensaje: 'Token no proporcionado o inválido',
-      });
+    if (!autenticado || !req.usuario) {
       return;
     }
+
+    // ✅ CORRECCIÓN: Extraer ruta correctamente
+    const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
+
+    // Eliminar "/api/productos" del pathname
+    const rutaProducto = pathname.replace('/api/productos', '') || '/';
+
+    console.log('🔍 Debug productos:', {
+      urlCompleta: req.url,
+      pathname,
+      rutaProducto,
+      metodo: req.method,
+    });
 
     // ✅ Routing por método
     switch (req.method) {
       case 'GET':
         // GET /api/productos - Obtener todos
-        if (!req.url || req.url === '/') {
+        if (rutaProducto === '/' || rutaProducto === '') {
           const productos = await ProductosService.obtenerTodos();
           res.status(200).json({
             exito: true,
@@ -60,9 +65,11 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         }
 
         // GET /api/productos/[id] - Obtener por ID
-        const id = req.url?.split('/')[1];
-        if (id) {
-          const producto = await ProductosService.obtenerPorId(id);
+        const productoId = rutaProducto.replace('/', '');
+
+        if (productoId && /^[0-9a-fA-F]{24}$/.test(productoId)) {
+          const producto = await ProductosService.obtenerPorId(productoId);
+
           if (!producto) {
             res.status(404).json({
               exito: false,
@@ -70,16 +77,24 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
             });
             return;
           }
+
           res.status(200).json({
             exito: true,
             dato: producto,
           });
           return;
         }
-        break;
+
+        // ID inválido
+        res.status(400).json({
+          exito: false,
+          error: 'ID de producto inválido',
+          mensaje:
+            'El ID debe ser un ObjectId válido de MongoDB (24 caracteres hexadecimales)',
+        });
+        return;
 
       case 'POST':
-        // Validar entrada
         const { error, value } = esquemaCrearProducto.validate(req.body, {
           abortEarly: false,
           stripUnknown: true,
@@ -97,7 +112,6 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        // Crear producto
         const nuevoProducto = await ProductosService.crear({
           ...value,
           activo: true,
@@ -107,18 +121,18 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
 
         res.status(201).json({
           exito: true,
-          mensaje: 'Producto creado exitosamente',
+          mensaje: 'Producto creado exitosamente ✅',
           dato: nuevoProducto,
         });
         return;
 
       case 'PUT':
-        // PUT /api/productos/[id]
-        const productoId = req.url?.split('/')[1];
-        if (!productoId) {
+        const idActualizar = rutaProducto.replace('/', '');
+
+        if (!idActualizar || !/^[0-9a-fA-F]{24}$/.test(idActualizar)) {
           res.status(400).json({
             exito: false,
-            error: 'ID de producto requerido',
+            error: 'ID de producto inválido',
           });
           return;
         }
@@ -138,7 +152,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         }
 
         const productoActualizado = await ProductosService.actualizar(
-          productoId,
+          idActualizar,
           {
             ...req.body,
             fechaActualizacion: new Date(),
@@ -155,24 +169,24 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
 
         res.status(200).json({
           exito: true,
-          mensaje: 'Producto actualizado exitosamente',
+          mensaje: 'Producto actualizado exitosamente ✅',
           dato: productoActualizado,
         });
         return;
 
       case 'DELETE':
-        // DELETE /api/productos/[id]
-        const delId = req.url?.split('/')[1];
-        if (!delId) {
+        const idEliminar = rutaProducto.replace('/', '');
+
+        if (!idEliminar || !/^[0-9a-fA-F]{24}$/.test(idEliminar)) {
           res.status(400).json({
             exito: false,
-            error: 'ID de producto requerido',
+            error: 'ID de producto inválido',
           });
           return;
         }
 
         const productoDesactivado = await Producto.findByIdAndUpdate(
-          delId,
+          idEliminar,
           {
             activo: false,
             fechaActualizacion: new Date(),
@@ -190,7 +204,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
 
         res.status(200).json({
           exito: true,
-          mensaje: 'Producto desactivado exitosamente',
+          mensaje: 'Producto desactivado exitosamente ✅',
           dato: productoDesactivado,
         });
         return;

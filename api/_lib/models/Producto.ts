@@ -40,7 +40,6 @@ const productoSchema = new Schema<IProducto>(
   },
   {
     timestamps: true,
-    collection: 'productos',
   }
 );
 
@@ -49,4 +48,4 @@ productoSchema.index({ categoria: 1 });
 productoSchema.index({ esConsignacion: 1 });
 productoSchema.index({ stock: 1 });
 
-export const Producto = model<IProducto>('Producto', productoSchema);
+export const Producto = model<IProducto>('productos', productoSchema);

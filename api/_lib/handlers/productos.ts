@@ -7,6 +7,7 @@ import {
 } from '../validacion/schemas.js';
 import { ProductosService } from '../services/ProductosService.js';
 import { Producto } from '../models/index.js';
+import { conectarMongoDB } from '../config/database.js';
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -26,6 +27,9 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   }
 
   try {
+    // ✅ Conectar a MongoDB primero
+    await conectarMongoDB();
+
     // ✅ Autenticación obligatoria
     let autenticado = false;
     await verificarAutenticacion(req, res, () => {
@@ -36,10 +40,8 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       return;
     }
 
-    // ✅ CORRECCIÓN: Extraer ruta correctamente
+    // ✅ Extraer ruta correctamente
     const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
-
-    // Eliminar "/api/productos" del pathname
     const rutaProducto = pathname.replace('/api/productos', '') || '/';
 
     console.log('🔍 Debug productos:', {
@@ -54,12 +56,24 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       case 'GET':
         // GET /api/productos - Obtener todos
         if (rutaProducto === '/' || rutaProducto === '') {
-          const productos = await ProductosService.obtenerTodos();
+          console.log('📦 Consultando productos...');
+          const inicio = Date.now();
+
+          // ✅ Consulta optimizada con proyección
+          const productos = await Producto.find({ activo: true })
+            .select('-__v') // Excluir campo de versión
+            .lean() // Convertir a objetos JS planos
+            .maxTimeMS(5000); // Timeout de 5 segundos
+
+          const duracion = Date.now() - inicio;
+          console.log(`✅ Productos obtenidos en ${duracion}ms`);
+
           res.status(200).json({
             exito: true,
             datos: productos,
             cantidad: productos.length,
             usuario: req.usuario.email,
+            tiempoConsulta: `${duracion}ms`,
           });
           return;
         }
@@ -68,7 +82,10 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         const productoId = rutaProducto.replace('/', '');
 
         if (productoId && /^[0-9a-fA-F]{24}$/.test(productoId)) {
-          const producto = await ProductosService.obtenerPorId(productoId);
+          const producto = await Producto.findById(productoId)
+            .select('-__v')
+            .lean()
+            .maxTimeMS(3000);
 
           if (!producto) {
             res.status(404).json({
@@ -192,7 +209,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
             fechaActualizacion: new Date(),
           },
           { new: true }
-        );
+        ).maxTimeMS(3000);
 
         if (!productoDesactivado) {
           res.status(404).json({
@@ -219,6 +236,16 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
     }
   } catch (error) {
     console.error('❌ Error en productos API:', error);
+
+    if (error instanceof Error && error.name === 'MongooseError') {
+      res.status(503).json({
+        exito: false,
+        error: 'Error de base de datos',
+        mensaje: 'No se pudo conectar a MongoDB. Intenta nuevamente.',
+      });
+      return;
+    }
+
     res.status(500).json({
       exito: false,
       error: 'Error al procesar solicitud',

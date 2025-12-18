@@ -1,4 +1,4 @@
-import { Schema, model, Document, Types } from "mongoose";
+import { Schema, model, Document, Types } from 'mongoose';
 
 export interface IProducto extends Document {
   codigo: string;
@@ -29,7 +29,7 @@ const productoSchema = new Schema<IProducto>(
     esConsignacion: { type: Boolean, default: false },
     proveedorId: {
       type: Schema.Types.ObjectId,
-      ref: "Proveedor",
+      ref: 'Proveedor',
       default: null,
     },
     categoria: { type: String, required: true },
@@ -38,7 +38,10 @@ const productoSchema = new Schema<IProducto>(
     fechaCreacion: { type: Date, default: () => new Date() },
     fechaActualizacion: { type: Date, default: () => new Date() },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    collection: 'productos',
+  }
 );
 
 productoSchema.index({ nombre: 1 });
@@ -46,4 +49,4 @@ productoSchema.index({ categoria: 1 });
 productoSchema.index({ esConsignacion: 1 });
 productoSchema.index({ stock: 1 });
 
-export const Producto = model<IProducto>("Producto", productoSchema);
+export const Producto = model<IProducto>('Producto', productoSchema);

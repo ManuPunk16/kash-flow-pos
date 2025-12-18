@@ -1,18 +1,12 @@
 import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest.js';
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { VercelResponse } from '@vercel/node';
 import { verificarAutenticacion } from '../middleware/autenticacion.js';
-import { validar } from '../validacion/validador.js';
 import { esquemaCrearVenta } from '../validacion/schemas.js';
 import { VentasService } from '../services/VentasService.js';
 import { Venta, Cliente, Usuario } from '../models/index.js';
 import { v4 as uuid } from 'uuid';
 
-/**
- * Vercel Function - Ventas API
- * Maneja GET, POST, PUT para ventas
- */
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
-  // ✅ CORS headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
   res.setHeader(
@@ -24,14 +18,12 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
 
-  // ✅ Handle preflight
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
   try {
-    // ✅ Permitir GET /api/ventas/cliente/:clienteId sin autenticación (opcional)
     const ruta = req.url || '/';
     if (req.method === 'GET' && ruta.includes('/cliente/')) {
       const clienteId = ruta.split('/cliente/')[1]?.split('/')[0];
@@ -47,20 +39,19 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
     }
 
     // ✅ Autenticación obligatoria para el resto
-    await verificarAutenticacion(req, res, () => {});
+    let autenticado = false;
+    await verificarAutenticacion(req, res, () => {
+      autenticado = true;
+    });
 
-    if (!req.usuario) {
-      res.status(401).json({
-        error: 'No autorizado',
-        mensaje: 'Token no proporcionado o inválido',
-      });
+    // ✅ Si no está autenticado, verificarAutenticacion ya envió la respuesta
+    if (!autenticado || !req.usuario) {
       return;
     }
 
     // ✅ Routing por método
     switch (req.method) {
       case 'GET':
-        // GET /api/ventas - Obtener todas las ventas
         if (!ruta || ruta === '/') {
           const ventas = await VentasService.obtenerTodas();
           res.status(200).json({
@@ -71,7 +62,6 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        // GET /api/ventas/[id] - Obtener venta específica
         const ventaId = ruta.split('/')[1];
         if (ventaId && !ventaId.includes('cliente')) {
           const venta = await Venta.findById(ventaId)
@@ -97,7 +87,6 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         break;
 
       case 'POST':
-        // POST /api/ventas - Crear nueva venta
         const { error, value } = esquemaCrearVenta.validate(req.body, {
           abortEarly: false,
           stripUnknown: true,
@@ -125,7 +114,6 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           observaciones,
         } = value;
 
-        // Validar que haya al menos un item
         if (!items || items.length === 0) {
           res.status(400).json({
             exito: false,
@@ -135,7 +123,6 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        // Calcular totales
         let subtotal = 0;
         let gananciaTotal = 0;
 
@@ -158,7 +145,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
 
             return {
               productoId: item.productoId,
-              nombreProducto: '', // Se llena desde BD
+              nombreProducto: '',
               cantidad,
               precioUnitario,
               costoUnitario,
@@ -171,7 +158,6 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
 
         const total = subtotal - descuento;
 
-        // Obtener datos del cliente y usuario
         const cliente = await Cliente.findById(clienteId);
         const usuario = await Usuario.findById(usuarioId);
 
@@ -183,7 +169,6 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        // Crear venta
         const datosVenta = {
           numeroVenta: `VTA-${new Date().toISOString().split('T')[0]}-${uuid()
             .substring(0, 8)
@@ -214,7 +199,6 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         return;
 
       case 'PUT':
-        // PUT /api/ventas/[id] - Anular venta
         const idVenta = ruta.split('/')[1];
         if (!idVenta) {
           res.status(400).json({

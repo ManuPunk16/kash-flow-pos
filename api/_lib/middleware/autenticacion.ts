@@ -1,34 +1,46 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { VercelResponse } from '@vercel/node';
 import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest.js';
 import admin from 'firebase-admin';
 
-/**
- * Middleware de autenticación usando Firebase Admin SDK
- * Valida el token JWT de Firebase y verifica permisos de admin
- */
+let firebaseInicializado = false;
 
 function inicializarFirebase() {
+  if (firebaseInicializado) return;
+
   try {
-    if (!admin.apps || admin.apps.length === 0) {
-      const serviceAccount = {
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      };
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount as any),
-      });
-
-      console.log('✅ Firebase Admin inicializado correctamente');
+    // ✅ Validar que todas las variables existan
+    if (!projectId || !privateKey || !clientEmail) {
+      throw new Error(
+        `Variables de Firebase faltantes: ${
+          !projectId ? 'FIREBASE_PROJECT_ID ' : ''
+        }${!privateKey ? 'FIREBASE_PRIVATE_KEY ' : ''}${
+          !clientEmail ? 'FIREBASE_CLIENT_EMAIL' : ''
+        }`
+      );
     }
+
+    if (!admin.apps || admin.apps.length === 0) {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId,
+          privateKey,
+          clientEmail,
+        }),
+      });
+    }
+
+    firebaseInicializado = true;
+    console.log('✅ Firebase Admin inicializado correctamente');
   } catch (error) {
     console.error('❌ Error inicializando Firebase Admin:', error);
     throw error;
   }
 }
 
-// Cambiar firmas de Request/Response/NextFunction a tipos compatibles
 export async function verificarAutenticacion(
   solicitud: AuthenticatedRequest,
   respuesta: VercelResponse,
@@ -50,7 +62,6 @@ export async function verificarAutenticacion(
     const token = authHeader.split('Bearer ')[1];
     const decodificado = await admin.auth().verifyIdToken(token);
 
-    // Validar que el UID esté en la lista de admins
     const adminUids = (process.env.ADMIN_UIDS || '')
       .split(',')
       .map((id) => id.trim());
@@ -63,11 +74,10 @@ export async function verificarAutenticacion(
       return;
     }
 
-    // Inyectar usuario en request
     solicitud.usuario = {
       uid: decodificado.uid,
       email: decodificado.email || '',
-      esAdmin: adminUids.includes(decodificado.uid),
+      esAdmin: true,
     };
 
     siguiente();

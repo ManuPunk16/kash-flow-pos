@@ -4,6 +4,7 @@ import { verificarAutenticacion } from '../middleware/autenticacion.js';
 import { esquemaCrearVenta } from '../validacion/schemas.js';
 import { VentasService } from '../services/VentasService.js';
 import { Venta, Cliente, Usuario } from '../models/index.js';
+import { conectarMongoDB } from '../config/database.js';
 import { v4 as uuid } from 'uuid';
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
@@ -24,35 +25,35 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   }
 
   try {
-    const ruta = req.url || '/';
-    if (req.method === 'GET' && ruta.includes('/cliente/')) {
-      const clienteId = ruta.split('/cliente/')[1]?.split('/')[0];
-      if (clienteId) {
-        const ventas = await VentasService.obtenerPorCliente(clienteId);
-        res.status(200).json({
-          exito: true,
-          datos: ventas,
-          cantidad: ventas.length,
-        });
-        return;
-      }
-    }
+    // ✅ Conectar a MongoDB
+    await conectarMongoDB();
 
-    // ✅ Autenticación obligatoria para el resto
+    // ✅ Autenticación obligatoria
     let autenticado = false;
     await verificarAutenticacion(req, res, () => {
       autenticado = true;
     });
 
-    // ✅ Si no está autenticado, verificarAutenticacion ya envió la respuesta
     if (!autenticado || !req.usuario) {
       return;
     }
 
+    // ✅ Extraer ruta correctamente
+    const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
+    const rutaVenta = pathname.replace('/api/ventas', '') || '/';
+
+    console.log('🔍 Debug ventas:', {
+      urlCompleta: req.url,
+      pathname,
+      rutaVenta,
+      metodo: req.method,
+    });
+
     // ✅ Routing por método
     switch (req.method) {
       case 'GET':
-        if (!ruta || ruta === '/') {
+        // GET /api/ventas - Obtener todas
+        if (rutaVenta === '/' || rutaVenta === '') {
           const ventas = await VentasService.obtenerTodas();
           res.status(200).json({
             exito: true,
@@ -62,8 +63,23 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        const ventaId = ruta.split('/')[1];
-        if (ventaId && !ventaId.includes('cliente')) {
+        // GET /api/ventas/cliente/[clienteId]
+        if (rutaVenta.includes('/cliente/')) {
+          const clienteId = rutaVenta.split('/cliente/')[1]?.split('/')[0];
+          if (clienteId && /^[0-9a-fA-F]{24}$/.test(clienteId)) {
+            const ventas = await VentasService.obtenerPorCliente(clienteId);
+            res.status(200).json({
+              exito: true,
+              datos: ventas,
+              cantidad: ventas.length,
+            });
+            return;
+          }
+        }
+
+        // GET /api/ventas/[id]
+        const ventaId = rutaVenta.replace('/', '');
+        if (ventaId && /^[0-9a-fA-F]{24}$/.test(ventaId)) {
           const venta = await Venta.findById(ventaId)
             .populate('clienteId')
             .populate('usuarioId')
@@ -84,7 +100,12 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           });
           return;
         }
-        break;
+
+        res.status(400).json({
+          exito: false,
+          error: 'ID de venta inválido',
+        });
+        return;
 
       case 'POST':
         const { error, value } = esquemaCrearVenta.validate(req.body, {
@@ -199,8 +220,11 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         return;
 
       case 'PUT':
-        const idVenta = ruta.split('/')[1];
-        if (!idVenta) {
+        const idVentaActualizar = rutaVenta.replace('/', '');
+        if (
+          !idVentaActualizar ||
+          !/^[0-9a-fA-F]{24}$/.test(idVentaActualizar)
+        ) {
           res.status(400).json({
             exito: false,
             error: 'ID de venta requerido',
@@ -220,7 +244,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        const ventaExistente = await Venta.findById(idVenta);
+        const ventaExistente = await Venta.findById(idVentaActualizar);
 
         if (!ventaExistente) {
           res.status(404).json({
@@ -243,7 +267,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
 
         res.status(200).json({
           exito: true,
-          mensaje: 'Venta anulada exitosamente',
+          mensaje: 'Venta anulada exitosamente ✅',
           dato: ventaExistente,
         });
         return;

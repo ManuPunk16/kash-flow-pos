@@ -1,14 +1,10 @@
 import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest.js';
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { VercelResponse } from '@vercel/node';
 import { verificarAutenticacion } from '../middleware/autenticacion.js';
 import { Cliente } from '../models/index.js';
+import { conectarMongoDB } from '../config/database.js';
 
-/**
- * Vercel Function - Intereses API
- * Maneja la lógica de interés compuesto (20% mensual)
- */
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
-  // ✅ CORS headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
   res.setHeader(
@@ -20,28 +16,40 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
 
-  // ✅ Handle preflight
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
   try {
-    // ✅ Autenticación obligatoria
-    await verificarAutenticacion(req, res, () => {});
+    // ✅ Conectar a MongoDB
+    await conectarMongoDB();
 
-    if (!req.usuario) {
-      res.status(401).json({ error: 'No autorizado' });
+    // ✅ Autenticación obligatoria
+    let autenticado = false;
+    await verificarAutenticacion(req, res, () => {
+      autenticado = true;
+    });
+
+    if (!autenticado || !req.usuario) {
       return;
     }
 
-    const ruta = req.url || '/';
+    // ✅ Extraer ruta correctamente
+    const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
+    const rutaInteres = pathname.replace('/api/intereses', '') || '/';
+
+    console.log('🔍 Debug intereses:', {
+      urlCompleta: req.url,
+      pathname,
+      rutaInteres,
+      metodo: req.method,
+    });
 
     // ✅ POST /api/intereses/corte - Ejecutar corte de mes
-    if (req.method === 'POST' && ruta.includes('/corte')) {
+    if (req.method === 'POST' && rutaInteres.includes('/corte')) {
       const hoy = new Date();
 
-      // Validar que sea día 1 del mes (o posterior sin que se haya ejecutado)
       if (hoy.getDate() < 1) {
         res.status(400).json({
           exito: false,
@@ -52,7 +60,6 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         return;
       }
 
-      // Obtener clientes con deuda
       const clientesConDeuda = await Cliente.find({
         activo: true,
         saldoActual: { $gt: 0 },
@@ -66,7 +73,6 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         return;
       }
 
-      // Procesar cada cliente
       const resultados = {
         procesados: 0,
         yaConInteresAplicado: 0,
@@ -81,7 +87,6 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
 
       for (const cliente of clientesConDeuda) {
         try {
-          // Validar si ya se aplicó interés este mes
           if (
             cliente.fechaUltimoCorteInteres &&
             cliente.fechaUltimoCorteInteres.getMonth() === hoy.getMonth() &&
@@ -91,11 +96,9 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
             continue;
           }
 
-          // Aplicar 20% de interés
           const montoInteres = cliente.saldoActual * 0.2;
           const nuevoSaldo = cliente.saldoActual + montoInteres;
 
-          // Actualizar cliente
           cliente.saldoActual = nuevoSaldo;
           cliente.fechaUltimoCorteInteres = hoy;
           cliente.historicoIntereses.push({
@@ -140,11 +143,11 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       return;
     }
 
-    // ✅ GET /api/intereses/historial/[clienteId] - Ver historial de intereses
-    if (req.method === 'GET' && ruta.includes('/historial/')) {
-      const clienteId = ruta.split('/historial/')[1]?.split('/')[0];
+    // ✅ GET /api/intereses/historial/[clienteId]
+    if (req.method === 'GET' && rutaInteres.includes('/historial/')) {
+      const clienteId = rutaInteres.split('/historial/')[1]?.split('/')[0];
 
-      if (!clienteId) {
+      if (!clienteId || !/^[0-9a-fA-F]{24}$/.test(clienteId)) {
         res.status(400).json({
           exito: false,
           error: 'ID de cliente requerido',
@@ -173,7 +176,10 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       return;
     }
 
-    res.status(405).json({ exito: false, error: 'Método no permitido' });
+    res.status(405).json({
+      exito: false,
+      error: 'Método no permitido',
+    });
   } catch (error) {
     console.error('❌ Error en intereses API:', error);
     res.status(500).json({

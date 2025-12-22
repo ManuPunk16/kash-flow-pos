@@ -1,5 +1,5 @@
 import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest.js';
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { VercelResponse } from '@vercel/node';
 import { verificarAutenticacion } from '../middleware/autenticacion.js';
 import {
   esquemaCrearCliente,
@@ -7,9 +7,9 @@ import {
 } from '../validacion/schemas.js';
 import { ClientesService } from '../services/ClientesService.js';
 import { Cliente } from '../models/index.js';
+import { conectarMongoDB } from '../config/database.js';
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
-  // ✅ CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
   res.setHeader(
@@ -27,152 +27,199 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   }
 
   try {
-    // ✅ Autenticación
-    await verificarAutenticacion(req, res, () => {});
+    // ✅ Conectar a MongoDB
+    await conectarMongoDB();
 
-    if (!req.usuario) {
-      res.status(401).json({ error: 'No autorizado' });
+    // ✅ Autenticación
+    let autenticado = false;
+    await verificarAutenticacion(req, res, () => {
+      autenticado = true;
+    });
+
+    if (!autenticado || !req.usuario) {
       return;
     }
 
-    const ruta = req.url || '/';
+    // ✅ Extraer ruta correctamente
+    const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
+    const rutaCliente = pathname.replace('/api/clientes', '') || '/';
 
-    // ✅ GET /api/clientes
-    if (req.method === 'GET') {
-      if (ruta === '/' || ruta === '') {
-        const clientes = await ClientesService.obtenerTodos();
-        res.status(200).json({
-          exito: true,
-          datos: clientes,
-          cantidad: clientes.length,
-        });
-        return;
-      }
+    console.log('🔍 Debug clientes:', {
+      urlCompleta: req.url,
+      pathname,
+      rutaCliente,
+      metodo: req.method,
+    });
 
-      // GET /api/clientes/deudores/listado
-      if (ruta.includes('deudores')) {
-        const deudores = await ClientesService.obtenerDeudores();
-        res.status(200).json({
-          exito: true,
-          datos: deudores,
-          cantidad: deudores.length,
-        });
-        return;
-      }
-
-      // GET /api/clientes/[id]
-      const clienteId = ruta.split('/')[1];
-      if (clienteId && clienteId !== 'deudores') {
-        const cliente = await ClientesService.obtenerPorId(clienteId);
-        if (!cliente) {
-          res
-            .status(404)
-            .json({ exito: false, error: 'Cliente no encontrado' });
+    // ✅ Routing por método
+    switch (req.method) {
+      case 'GET':
+        // GET /api/clientes - Obtener todos
+        if (rutaCliente === '/' || rutaCliente === '') {
+          const clientes = await ClientesService.obtenerTodos();
+          res.status(200).json({
+            exito: true,
+            datos: clientes,
+            cantidad: clientes.length,
+          });
           return;
         }
-        res.status(200).json({ exito: true, dato: cliente });
-        return;
-      }
-    }
 
-    // ✅ POST /api/clientes
-    if (req.method === 'POST') {
-      const { error, value } = esquemaCrearCliente.validate(req.body);
-      if (error) {
+        // GET /api/clientes/deudores/listado
+        if (rutaCliente.includes('/deudores')) {
+          const deudores = await ClientesService.obtenerDeudores();
+          res.status(200).json({
+            exito: true,
+            datos: deudores,
+            cantidad: deudores.length,
+          });
+          return;
+        }
+
+        // GET /api/clientes/[id]
+        const clienteId = rutaCliente.replace('/', '');
+        if (clienteId && /^[0-9a-fA-F]{24}$/.test(clienteId)) {
+          const cliente = await ClientesService.obtenerPorId(clienteId);
+          if (!cliente) {
+            res.status(404).json({
+              exito: false,
+              error: 'Cliente no encontrado',
+            });
+            return;
+          }
+          res.status(200).json({ exito: true, dato: cliente });
+          return;
+        }
+
         res.status(400).json({
           exito: false,
-          error: 'Validación fallida',
-          detalles: error.details,
+          error: 'ID de cliente inválido',
         });
         return;
-      }
 
-      const nuevoCliente = await ClientesService.crear({
-        ...value,
-        activo: true,
-        saldoActual: 0,
-        saldoHistorico: 0,
-        esMoroso: false,
-        diasSinPagar: 0,
-        historicoIntereses: [],
-        fechaCreacion: new Date(),
-        fechaActualizacion: new Date(),
-      });
+      case 'POST':
+        const { error, value } = esquemaCrearCliente.validate(req.body, {
+          abortEarly: false,
+          stripUnknown: true,
+        });
 
-      res.status(201).json({
-        exito: true,
-        mensaje: 'Cliente creado exitosamente',
-        dato: nuevoCliente,
-      });
-      return;
-    }
+        if (error) {
+          res.status(400).json({
+            exito: false,
+            error: 'Validación fallida',
+            detalles: error.details.map((d) => ({
+              campo: d.path.join('.'),
+              mensaje: d.message,
+            })),
+          });
+          return;
+        }
 
-    // ✅ PUT /api/clientes/[id]
-    if (req.method === 'PUT') {
-      const clienteId = ruta.split('/')[1];
-      if (!clienteId) {
-        res.status(400).json({ exito: false, error: 'ID requerido' });
+        const nuevoCliente = await ClientesService.crear({
+          ...value,
+          activo: true,
+          saldoActual: 0,
+          saldoHistorico: 0,
+          esMoroso: false,
+          diasSinPagar: 0,
+          historicoIntereses: [],
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date(),
+        });
+
+        res.status(201).json({
+          exito: true,
+          mensaje: 'Cliente creado exitosamente ✅',
+          dato: nuevoCliente,
+        });
         return;
-      }
 
-      const { error } = esquemaActualizarCliente.validate(req.body);
-      if (error) {
-        res.status(400).json({
+      case 'PUT':
+        const idActualizar = rutaCliente.replace('/', '');
+        if (!idActualizar || !/^[0-9a-fA-F]{24}$/.test(idActualizar)) {
+          res.status(400).json({
+            exito: false,
+            error: 'ID de cliente inválido',
+          });
+          return;
+        }
+
+        const { error: errorUpdate } = esquemaActualizarCliente.validate(
+          req.body,
+          { abortEarly: false, stripUnknown: true }
+        );
+
+        if (errorUpdate) {
+          res.status(400).json({
+            exito: false,
+            error: 'Validación fallida',
+            detalles: errorUpdate.details,
+          });
+          return;
+        }
+
+        const clienteActualizado = await Cliente.findByIdAndUpdate(
+          idActualizar,
+          { ...req.body, fechaActualizacion: new Date() },
+          { new: true }
+        );
+
+        if (!clienteActualizado) {
+          res.status(404).json({
+            exito: false,
+            error: 'Cliente no encontrado',
+          });
+          return;
+        }
+
+        res.status(200).json({
+          exito: true,
+          mensaje: 'Cliente actualizado exitosamente ✅',
+          dato: clienteActualizado,
+        });
+        return;
+
+      case 'DELETE':
+        const idEliminar = rutaCliente.replace('/', '');
+        if (!idEliminar || !/^[0-9a-fA-F]{24}$/.test(idEliminar)) {
+          res.status(400).json({
+            exito: false,
+            error: 'ID de cliente inválido',
+          });
+          return;
+        }
+
+        const clienteDesactivado = await Cliente.findByIdAndUpdate(
+          idEliminar,
+          { activo: false, fechaActualizacion: new Date() },
+          { new: true }
+        );
+
+        if (!clienteDesactivado) {
+          res.status(404).json({
+            exito: false,
+            error: 'Cliente no encontrado',
+          });
+          return;
+        }
+
+        res.status(200).json({
+          exito: true,
+          mensaje: 'Cliente desactivado exitosamente ✅',
+          dato: clienteDesactivado,
+        });
+        return;
+
+      default:
+        res.status(405).json({
           exito: false,
-          error: 'Validación fallida',
-          detalles: error.details,
+          error: 'Método no permitido',
+          metodo: req.method,
         });
         return;
-      }
-
-      const clienteActualizado = await Cliente.findByIdAndUpdate(
-        clienteId,
-        { ...req.body, fechaActualizacion: new Date() },
-        { new: true }
-      );
-
-      if (!clienteActualizado) {
-        res.status(404).json({ exito: false, error: 'Cliente no encontrado' });
-        return;
-      }
-
-      res.status(200).json({
-        exito: true,
-        mensaje: 'Cliente actualizado exitosamente',
-        dato: clienteActualizado,
-      });
-      return;
     }
-
-    // ✅ DELETE /api/clientes/[id]
-    if (req.method === 'DELETE') {
-      const clienteId = ruta.split('/')[1];
-      if (!clienteId) {
-        res.status(400).json({ exito: false, error: 'ID requerido' });
-        return;
-      }
-
-      const clienteDesactivado = await Cliente.findByIdAndUpdate(
-        clienteId,
-        { activo: false, fechaActualizacion: new Date() },
-        { new: true }
-      );
-
-      if (!clienteDesactivado) {
-        res.status(404).json({ exito: false, error: 'Cliente no encontrado' });
-        return;
-      }
-
-      res.status(200).json({
-        exito: true,
-        mensaje: 'Cliente desactivado exitosamente',
-        dato: clienteDesactivado,
-      });
-      return;
-    }
-
-    res.status(405).json({ exito: false, error: 'Método no permitido' });
   } catch (error) {
+    console.error('❌ Error en clientes API:', error);
     res.status(500).json({
       exito: false,
       error: 'Error al procesar solicitud',

@@ -2,19 +2,17 @@ import winston from 'winston';
 
 const { combine, timestamp, printf, colorize, errors } = winston.format;
 
-// ✅ CORRECTO - Tipar parámetros explícitamente
+// ✅ Formato personalizado
 const formatoPersonalizado = printf(
   (info: winston.Logform.TransformableInfo) => {
     const { level, message, timestamp: ts, stack, ...metadata } = info;
 
     let msg = `${ts} [${level}]: ${message}`;
 
-    // Agregar stack trace si existe
     if (stack) {
       msg += `\n${stack}`;
     }
 
-    // Agregar metadata si existe
     const metadataKeys = Object.keys(metadata);
     if (metadataKeys.length > 0) {
       msg += `\n${JSON.stringify(metadata, null, 2)}`;
@@ -24,7 +22,7 @@ const formatoPersonalizado = printf(
   }
 );
 
-// ✅ Logger para desarrollo
+// ✅ Logger para desarrollo (con colores)
 const loggerDesarrollo = winston.createLogger({
   level: 'debug',
   format: combine(
@@ -36,25 +34,21 @@ const loggerDesarrollo = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
-// ✅ Logger para producción
+// ✅ Logger para producción (JSON, SOLO CONSOLE - sin archivos)
 const loggerProduccion = winston.createLogger({
   level: 'info',
   format: combine(timestamp(), errors({ stack: true }), winston.format.json()),
   transports: [
+    // ✅ SOLO Console (Vercel captura estos logs automáticamente)
     new winston.transports.Console(),
-    new winston.transports.File({
-      filename: 'logs/error.log',
-      level: 'error',
-    }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
   ],
 });
 
-// ✅ Exportar logger según el entorno
+// ✅ Exportar según entorno
 export const logger =
   process.env.NODE_ENV === 'production' ? loggerProduccion : loggerDesarrollo;
 
-// ✅ Funciones helper con tipado explícito
+// ✅ Funciones helper
 export const logInfo = (
   mensaje: string,
   metadata?: Record<string, unknown>

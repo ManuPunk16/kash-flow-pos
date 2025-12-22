@@ -46,10 +46,72 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       metodo: req.method,
     });
 
+    // ===========================
+    // ✅ GET /api/intereses - Resumen general
+    // ===========================
+    if (req.method === 'GET' && (rutaInteres === '/' || rutaInteres === '')) {
+      const hoy = new Date();
+      const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      const ultimoDiaMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+
+      // Clientes con deuda actual
+      const clientesConDeuda = await Cliente.find({
+        activo: true,
+        saldoActual: { $gt: 0 },
+      })
+        .select('nombre apellido saldoActual fechaUltimoCorteInteres')
+        .lean();
+
+      // Calcular cuántos ya tienen interés aplicado este mes
+      const conInteresAplicado = clientesConDeuda.filter(
+        (cliente) =>
+          cliente.fechaUltimoCorteInteres &&
+          cliente.fechaUltimoCorteInteres >= primerDiaMes &&
+          cliente.fechaUltimoCorteInteres <= ultimoDiaMes
+      );
+
+      const pendientesInteres =
+        clientesConDeuda.length - conInteresAplicado.length;
+
+      // Calcular proyección de intereses
+      const montoTotalDeuda = clientesConDeuda.reduce(
+        (sum, c) => sum + c.saldoActual,
+        0
+      );
+      const proyeccionIntereses = montoTotalDeuda * 0.2;
+
+      res.status(200).json({
+        exito: true,
+        resumen: {
+          clientesConDeuda: clientesConDeuda.length,
+          clientesConInteresAplicado: conInteresAplicado.length,
+          clientesPendientes: pendientesInteres,
+          montoTotalDeuda,
+          proyeccionIntereses,
+          mesActual: hoy.toLocaleDateString('es-ES', {
+            month: 'long',
+            year: 'numeric',
+          }),
+        },
+        detalleClientes: clientesConDeuda.map((cliente) => ({
+          nombre: `${cliente.nombre} ${cliente.apellido}`,
+          deudaActual: cliente.saldoActual,
+          interesProyectado: cliente.saldoActual * 0.2,
+          interesAplicado: conInteresAplicado.some(
+            (c) => c._id.toString() === cliente._id.toString()
+          ),
+        })),
+      });
+      return;
+    }
+
+    // ===========================
     // ✅ POST /api/intereses/corte - Ejecutar corte de mes
+    // ===========================
     if (req.method === 'POST' && rutaInteres.includes('/corte')) {
       const hoy = new Date();
 
+      // ⚠️ Solo permitir desde el día 1
       if (hoy.getDate() < 1) {
         res.status(400).json({
           exito: false,
@@ -87,6 +149,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
 
       for (const cliente of clientesConDeuda) {
         try {
+          // Validar si ya se aplicó interés este mes
           if (
             cliente.fechaUltimoCorteInteres &&
             cliente.fechaUltimoCorteInteres.getMonth() === hoy.getMonth() &&
@@ -96,8 +159,9 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
             continue;
           }
 
-          const montoInteres = cliente.saldoActual * 0.2;
-          const nuevoSaldo = cliente.saldoActual + montoInteres;
+          const saldoAnterior = cliente.saldoActual;
+          const montoInteres = saldoAnterior * 0.2;
+          const nuevoSaldo = saldoAnterior + montoInteres;
 
           cliente.saldoActual = nuevoSaldo;
           cliente.fechaUltimoCorteInteres = hoy;
@@ -116,7 +180,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           resultados.procesados++;
           resultados.detalles.push({
             cliente: `${cliente.nombre} ${cliente.apellido}`,
-            saldoAnterior: cliente.saldoActual - montoInteres,
+            saldoAnterior,
             montoInteres,
             nuevoSaldo,
           });
@@ -143,20 +207,23 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       return;
     }
 
+    // ===========================
     // ✅ GET /api/intereses/historial/[clienteId]
+    // ===========================
     if (req.method === 'GET' && rutaInteres.includes('/historial/')) {
       const clienteId = rutaInteres.split('/historial/')[1]?.split('/')[0];
 
       if (!clienteId || !/^[0-9a-fA-F]{24}$/.test(clienteId)) {
         res.status(400).json({
           exito: false,
-          error: 'ID de cliente requerido',
+          error: 'ID de cliente inválido',
+          mensaje: 'Debe proporcionar un ObjectId válido de MongoDB',
         });
         return;
       }
 
       const cliente = await Cliente.findById(clienteId)
-        .select('nombre apellido historicoIntereses')
+        .select('nombre apellido saldoActual historicoIntereses')
         .lean();
 
       if (!cliente) {
@@ -169,16 +236,32 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
 
       res.status(200).json({
         exito: true,
-        cliente: `${cliente.nombre} ${cliente.apellido}`,
+        cliente: {
+          nombre: `${cliente.nombre} ${cliente.apellido}`,
+          saldoActual: cliente.saldoActual,
+        },
         intereses: cliente.historicoIntereses || [],
         cantidad: (cliente.historicoIntereses || []).length,
+        montoTotalIntereses: (cliente.historicoIntereses || []).reduce(
+          (sum, i) => sum + i.montoAplicado,
+          0
+        ),
       });
       return;
     }
 
-    res.status(405).json({
+    // ===========================
+    // ❌ Ruta no encontrada
+    // ===========================
+    res.status(404).json({
       exito: false,
-      error: 'Método no permitido',
+      error: 'Ruta no encontrada',
+      mensaje: `La ruta ${rutaInteres} no existe`,
+      rutasDisponibles: [
+        'GET /api/intereses',
+        'POST /api/intereses/corte',
+        'GET /api/intereses/historial/[clienteId]',
+      ],
     });
   } catch (error) {
     console.error('❌ Error en intereses API:', error);

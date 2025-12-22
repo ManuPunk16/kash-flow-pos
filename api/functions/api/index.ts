@@ -9,6 +9,8 @@ import productosHandler from '../../_lib/handlers/productos.js';
 import ventasHandler from '../../_lib/handlers/ventas.js';
 import interesesHandler from '../../_lib/handlers/intereses.js';
 import authHandler from '../../_lib/handlers/auth.js';
+import proveedoresHandler from '../../_lib/handlers/proveedores.js';
+import pagosProveedoresHandler from '../../_lib/handlers/pagos-proveedores.js';
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
@@ -57,6 +59,10 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       return await ventasHandler(req, res);
     if (pathname.startsWith('/api/intereses'))
       return await interesesHandler(req, res);
+    if (pathname.startsWith('/api/proveedores'))
+      return await proveedoresHandler(req, res);
+    if (pathname.startsWith('/api/pagos-proveedores'))
+      return await pagosProveedoresHandler(req, res);
     if (pathname.startsWith('/api/auth')) return await authHandler(req, res);
 
     res.status(404).json({

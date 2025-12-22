@@ -1,4 +1,4 @@
-import { Schema, model, Document } from "mongoose";
+import { Schema, model, Document } from 'mongoose';
 
 export interface IProveedor extends Document {
   nombre: string;
@@ -32,10 +32,13 @@ const proveedorSchema = new Schema<IProveedor>(
     fechaCreacion: { type: Date, default: () => new Date() },
     fechaActualizacion: { type: Date, default: () => new Date() },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    collection: 'proveedores',
+  }
 );
 
 proveedorSchema.index({ nombre: 1 });
 proveedorSchema.index({ activo: 1 });
 
-export const Proveedor = model<IProveedor>("Proveedor", proveedorSchema);
+export const Proveedor = model<IProveedor>('Proveedor', proveedorSchema);

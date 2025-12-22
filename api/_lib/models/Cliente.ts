@@ -1,4 +1,4 @@
-import { Schema, model, Document } from "mongoose";
+import { Schema, model, Document } from 'mongoose';
 
 export interface IHistoricoInteres {
   fecha: Date;
@@ -55,11 +55,14 @@ const clienteSchema = new Schema<ICliente>(
     fechaCreacion: { type: Date, default: () => new Date() },
     fechaActualizacion: { type: Date, default: () => new Date() },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    collection: 'clientes',
+  }
 );
 
 clienteSchema.index({ nombre: 1 });
 clienteSchema.index({ esMoroso: 1 });
 clienteSchema.index({ saldoActual: 1 });
 
-export const Cliente = model<ICliente>("Cliente", clienteSchema);
+export const Cliente = model<ICliente>('Cliente', clienteSchema);

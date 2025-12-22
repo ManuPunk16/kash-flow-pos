@@ -1,4 +1,4 @@
-import { Schema, model, Document, Types } from "mongoose";
+import { Schema, model, Document, Types } from 'mongoose';
 
 export interface IItemVenta {
   productoId: Types.ObjectId;
@@ -21,13 +21,13 @@ export interface IVenta extends Document {
   subtotal: number;
   descuento: number;
   total: number;
-  metodoPago: "fiado" | "efectivo" | "transferencia";
+  metodoPago: 'fiado' | 'efectivo' | 'transferencia';
   referenciaPago?: string;
   saldoClienteAntes?: number;
   saldoClienteDespues?: number;
   gananciaTotal: number;
   observaciones: string;
-  estado: "completada" | "anulada";
+  estado: 'completada' | 'anulada';
   fechaVenta: Date;
   fechaCreacion: Date;
 }
@@ -36,7 +36,7 @@ const itemVentaSchema = new Schema<IItemVenta>(
   {
     productoId: {
       type: Schema.Types.ObjectId,
-      ref: "Producto",
+      ref: 'Producto',
       required: true,
     },
     nombreProducto: { type: String, required: true },
@@ -53,9 +53,9 @@ const itemVentaSchema = new Schema<IItemVenta>(
 const ventaSchema = new Schema<IVenta>(
   {
     numeroVenta: { type: String, required: true, unique: true },
-    clienteId: { type: Schema.Types.ObjectId, ref: "Cliente", required: true },
+    clienteId: { type: Schema.Types.ObjectId, ref: 'Cliente', required: true },
     nombreCliente: { type: String, required: true },
-    usuarioId: { type: Schema.Types.ObjectId, ref: "Usuario", required: true },
+    usuarioId: { type: Schema.Types.ObjectId, ref: 'Usuario', required: true },
     nombreUsuario: { type: String, required: true },
     items: { type: [itemVentaSchema], required: true },
     subtotal: { type: Number, required: true, min: 0 },
@@ -63,7 +63,7 @@ const ventaSchema = new Schema<IVenta>(
     total: { type: Number, required: true, min: 0 },
     metodoPago: {
       type: String,
-      enum: ["fiado", "efectivo", "transferencia"],
+      enum: ['fiado', 'efectivo', 'transferencia'],
       required: true,
     },
     referenciaPago: { type: String },
@@ -73,13 +73,16 @@ const ventaSchema = new Schema<IVenta>(
     observaciones: { type: String },
     estado: {
       type: String,
-      enum: ["completada", "anulada"],
-      default: "completada",
+      enum: ['completada', 'anulada'],
+      default: 'completada',
     },
     fechaVenta: { type: Date, required: true },
     fechaCreacion: { type: Date, default: () => new Date() },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    collection: 'ventas',
+  }
 );
 
 ventaSchema.index({ clienteId: 1 });
@@ -87,4 +90,4 @@ ventaSchema.index({ usuarioId: 1 });
 ventaSchema.index({ fechaVenta: -1 });
 ventaSchema.index({ metodoPago: 1 });
 
-export const Venta = model<IVenta>("Venta", ventaSchema);
+export const Venta = model<IVenta>('Venta', ventaSchema);

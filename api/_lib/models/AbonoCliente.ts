@@ -1,4 +1,4 @@
-import { Schema, model, Document, Types } from "mongoose";
+import { Schema, model, Document, Types } from 'mongoose';
 
 export interface IAbonoCliente extends Document {
   clienteId: Types.ObjectId;
@@ -6,7 +6,7 @@ export interface IAbonoCliente extends Document {
   usuarioId: Types.ObjectId;
   nombreUsuario: string;
   monto: number;
-  metodoPago: "efectivo" | "transferencia" | "cheque";
+  metodoPago: 'efectivo' | 'transferencia' | 'cheque';
   referenciaPago?: string;
   saldoAnterior: number;
   nuevoSaldo: number;
@@ -18,14 +18,14 @@ export interface IAbonoCliente extends Document {
 
 const abonoClienteSchema = new Schema<IAbonoCliente>(
   {
-    clienteId: { type: Schema.Types.ObjectId, ref: "Cliente", required: true },
+    clienteId: { type: Schema.Types.ObjectId, ref: 'Cliente', required: true },
     nombreCliente: { type: String, required: true },
-    usuarioId: { type: Schema.Types.ObjectId, ref: "Usuario", required: true },
+    usuarioId: { type: Schema.Types.ObjectId, ref: 'Usuario', required: true },
     nombreUsuario: { type: String, required: true },
     monto: { type: Number, required: true, min: 0 },
     metodoPago: {
       type: String,
-      enum: ["efectivo", "transferencia", "cheque"],
+      enum: ['efectivo', 'transferencia', 'cheque'],
       required: true,
     },
     referenciaPago: { type: String },
@@ -36,7 +36,10 @@ const abonoClienteSchema = new Schema<IAbonoCliente>(
     fechaPago: { type: Date, required: true },
     fechaCreacion: { type: Date, default: () => new Date() },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    collection: 'abonosClientes',
+  }
 );
 
 // Índices
@@ -45,6 +48,6 @@ abonoClienteSchema.index({ usuarioId: 1 });
 abonoClienteSchema.index({ fechaPago: -1 });
 
 export const AbonoCliente = model<IAbonoCliente>(
-  "AbonoCliente",
+  'AbonoCliente',
   abonoClienteSchema
 );

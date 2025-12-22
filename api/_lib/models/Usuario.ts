@@ -1,4 +1,4 @@
-import { Schema, model, Document } from "mongoose";
+import { Schema, model, Document } from 'mongoose';
 
 export interface IPermisos {
   verVentas: boolean;
@@ -14,7 +14,7 @@ export interface IUsuario extends Document {
   firebaseUid: string;
   nombre: string;
   apellido: string;
-  rol: "admin" | "gerente" | "vendedor";
+  rol: 'admin' | 'gerente' | 'vendedor';
   activo: boolean;
   permisos: IPermisos;
   fechaCreacion: Date;
@@ -41,15 +41,18 @@ const usuarioSchema = new Schema<IUsuario>(
     apellido: { type: String, required: true },
     rol: {
       type: String,
-      enum: ["admin", "gerente", "vendedor"],
-      default: "vendedor",
+      enum: ['admin', 'gerente', 'vendedor'],
+      default: 'vendedor',
     },
     activo: { type: Boolean, default: true },
     permisos: { type: permisoSchema, required: true },
     fechaCreacion: { type: Date, default: () => new Date() },
     fechaUltimaLogin: { type: Date, default: () => new Date() },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    collection: 'usuarios',
+  }
 );
 
-export const Usuario = model<IUsuario>("Usuario", usuarioSchema);
+export const Usuario = model<IUsuario>('Usuario', usuarioSchema);

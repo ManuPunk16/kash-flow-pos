@@ -11,6 +11,7 @@ import interesesHandler from '../../_lib/handlers/intereses.js';
 import authHandler from '../../_lib/handlers/auth.js';
 import proveedoresHandler from '../../_lib/handlers/proveedores.js';
 import pagosProveedoresHandler from '../../_lib/handlers/pagos-proveedores.js';
+import reportesHandler from '../../_lib/handlers/reportes.js'; // ✅ AGREGAR ESTE IMPORT
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
@@ -49,6 +50,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       return;
     }
 
+    // ✅ Routing de handlers
     if (pathname.startsWith('/api/abonos'))
       return await abonosHandler(req, res);
     if (pathname.startsWith('/api/clientes'))
@@ -63,11 +65,27 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       return await proveedoresHandler(req, res);
     if (pathname.startsWith('/api/pagos-proveedores'))
       return await pagosProveedoresHandler(req, res);
+    if (pathname.startsWith('/api/reportes'))
+      // ✅ AGREGAR ESTA LÍNEA
+      return await reportesHandler(req, res);
     if (pathname.startsWith('/api/auth')) return await authHandler(req, res);
 
+    // 404
     res.status(404).json({
       error: 'Ruta no encontrada',
       pathname,
+      rutasDisponibles: [
+        'GET  /api',
+        'POST /api/auth/login-testing',
+        'GET  /api/productos',
+        'GET  /api/clientes',
+        'GET  /api/ventas',
+        'GET  /api/abonos',
+        'GET  /api/intereses',
+        'GET  /api/proveedores',
+        'GET  /api/pagos-proveedores',
+        'GET  /api/reportes', // ✅ AGREGAR ESTA LÍNEA
+      ],
     });
   } catch (error) {
     console.error('❌ Error en API:', error);

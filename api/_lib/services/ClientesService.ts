@@ -1,4 +1,5 @@
 import { Cliente, type ICliente } from '../models/index.js';
+import { ClientSession } from 'mongoose';
 
 export class ClientesService {
   /**

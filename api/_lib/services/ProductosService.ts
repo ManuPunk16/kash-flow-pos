@@ -1,4 +1,5 @@
 import { Producto, type IProducto } from '../models/index.js';
+import { ClientSession } from 'mongoose';
 
 export class ProductosService {
   /**
@@ -57,5 +58,20 @@ export class ProductosService {
     await Producto.findByIdAndUpdate(id, {
       $inc: { stock: -cantidad },
     }).maxTimeMS(3000);
+  }
+
+  /**
+   * Descontar stock CON SESIÓN (para transacciones)
+   */
+  static async descontarStockConSesion(
+    id: string,
+    cantidad: number,
+    session: ClientSession
+  ): Promise<void> {
+    await Producto.findByIdAndUpdate(
+      id,
+      { $inc: { stock: -cantidad } },
+      { session }
+    ).maxTimeMS(3000);
   }
 }

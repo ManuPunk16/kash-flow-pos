@@ -46,6 +46,24 @@ export class ClientesService {
   }
 
   /**
+   * Actualizar saldo CON SESIÓN (para transacciones)
+   */
+  static async actualizarSaldoVentaConSesion(
+    id: string,
+    monto: number,
+    session: ClientSession
+  ): Promise<void> {
+    await Cliente.findByIdAndUpdate(
+      id,
+      {
+        $inc: { saldoActual: monto },
+        $set: { ultimaCompra: new Date() },
+      },
+      { session }
+    );
+  }
+
+  /**
    * Registrar abono (pago a la deuda)
    */
   static async registrarAbono(id: string, monto: number): Promise<void> {

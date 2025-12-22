@@ -59,22 +59,28 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           console.log('📦 Consultando productos...');
           const inicio = Date.now();
 
-          // ✅ Consulta optimizada con proyección
-          const productos = await Producto.find({ activo: true })
-            .select('-__v') // Excluir campo de versión
-            .lean() // Convertir a objetos JS planos
-            .maxTimeMS(5000); // Timeout de 5 segundos
+          // ✅ Extraer parámetros de paginación
+          const { pagina, limite, skip } = obtenerOpcionesPaginacion(req);
+
+          // ✅ Consulta con paginación
+          const [productos, total] = await Promise.all([
+            Producto.find({ activo: true })
+              .select('-__v')
+              .skip(skip)
+              .limit(limite)
+              .lean()
+              .maxTimeMS(5000),
+            Producto.countDocuments({ activo: true }),
+          ]);
 
           const duracion = Date.now() - inicio;
-          console.log(`✅ Productos obtenidos en ${duracion}ms`);
+          console.log(
+            `✅ Productos obtenidos: ${productos.length}/${total} en ${duracion}ms`
+          );
 
-          res.status(200).json({
-            exito: true,
-            datos: productos,
-            cantidad: productos.length,
-            usuario: req.usuario.email,
-            tiempoConsulta: `${duracion}ms`,
-          });
+          res
+            .status(200)
+            .json(construirRespuestaPaginada(productos, total, pagina, limite));
           return;
         }
 
@@ -253,3 +259,29 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
     });
   }
 };
+
+function obtenerOpcionesPaginacion(req: AuthenticatedRequest) {
+  const pagina = parseInt(req.query.pagina as string) || 1;
+  const limite = parseInt(req.query.limite as string) || 10;
+  const skip = (pagina - 1) * limite;
+
+  return { pagina, limite, skip };
+}
+
+function construirRespuestaPaginada(
+  productos: any[],
+  total: number,
+  pagina: number,
+  limite: number
+) {
+  const totalPaginas = Math.ceil(total / limite);
+
+  return {
+    exito: true,
+    datos: productos,
+    pagina,
+    limite,
+    total,
+    totalPaginas,
+  };
+}

@@ -1,6 +1,9 @@
-import { Venta, type IVenta, Cliente, Producto } from '../models/index.js';
+import { Venta, type IVenta } from '../models/index.js';
 import { ProductosService } from './ProductosService.js';
 import { ClientesService } from './ClientesService.js';
+import { TransaccionesService } from './TransaccionesService.js';
+import { ClientSession } from 'mongoose';
+import { logger } from '../utils/logger.js';
 
 export class VentasService {
   /**
@@ -15,44 +18,68 @@ export class VentasService {
   }
 
   /**
-   * Crear venta (flujo completo)
+   * Crear venta CON TRANSACCIÓN (flujo completo)
    */
   static async crear(datos: Partial<IVenta>): Promise<IVenta> {
-    const venta = new Venta(datos);
+    logger.info('Iniciando creación de venta', {
+      clienteId: datos.clienteId,
+      metodoPago: datos.metodoPago,
+      total: datos.total,
+    });
 
-    // Validar stock de todos los items
-    for (const item of venta.items) {
-      const hayStock = await ProductosService.validarStock(
-        item.productoId.toString(),
-        item.cantidad
-      );
-      if (!hayStock) {
-        throw new Error(
-          `Stock insuficiente para producto: ${item.nombreProducto}`
-        );
+    return await TransaccionesService.reintentarTransaccion(
+      async (session: ClientSession) => {
+        const venta = new Venta(datos);
+
+        // ✅ 1. Validar stock de TODOS los items
+        for (const item of venta.items) {
+          const hayStock = await ProductosService.validarStock(
+            item.productoId.toString(),
+            item.cantidad
+          );
+
+          if (!hayStock) {
+            throw new Error(
+              `Stock insuficiente para producto: ${item.nombreProducto}`
+            );
+          }
+        }
+
+        // ✅ 2. Guardar venta
+        await venta.save({ session });
+        logger.debug('Venta guardada en BD', { ventaId: venta._id });
+
+        // ✅ 3. Descontar stock de TODOS los productos
+        for (const item of venta.items) {
+          await ProductosService.descontarStockConSesion(
+            item.productoId.toString(),
+            item.cantidad,
+            session
+          );
+        }
+        logger.debug('Stock descontado correctamente');
+
+        // ✅ 4. Si es venta a fiado, actualizar saldo del cliente
+        if (venta.metodoPago === 'fiado') {
+          await ClientesService.actualizarSaldoVentaConSesion(
+            venta.clienteId.toString(),
+            venta.total,
+            session
+          );
+          logger.debug('Saldo cliente actualizado', {
+            clienteId: venta.clienteId,
+            nuevoSaldo: venta.total,
+          });
+        }
+
+        logger.info('✅ Venta creada exitosamente', {
+          ventaId: venta._id,
+          numeroVenta: venta.numeroVenta,
+        });
+
+        return venta;
       }
-    }
-
-    // Guardar venta
-    await venta.save();
-
-    // Descontar stock
-    for (const item of venta.items) {
-      await ProductosService.descontarStock(
-        item.productoId.toString(),
-        item.cantidad
-      );
-    }
-
-    // Si es venta a fiado, actualizar saldo del cliente
-    if (venta.metodoPago === 'fiado') {
-      await ClientesService.actualizarSaldoVenta(
-        venta.clienteId.toString(),
-        venta.total
-      );
-    }
-
-    return venta;
+    );
   }
 
   /**

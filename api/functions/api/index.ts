@@ -11,7 +11,8 @@ import interesesHandler from '../../_lib/handlers/intereses.js';
 import authHandler from '../../_lib/handlers/auth.js';
 import proveedoresHandler from '../../_lib/handlers/proveedores.js';
 import pagosProveedoresHandler from '../../_lib/handlers/pagos-proveedores.js';
-import reportesHandler from '../../_lib/handlers/reportes.js'; // ✅ AGREGAR ESTE IMPORT
+import reportesHandler from '../../_lib/handlers/reportes.js';
+import categoriasHandler from '../../_lib/handlers/categorias.js';
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
@@ -44,8 +45,21 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       res.status(200).json({
         exito: true,
         mensaje: '✅ KashFlow POS API funcionando correctamente',
-        version: '1.0.0',
+        version: '2.0.0', // ✅ Incrementar versión
         timestamp: new Date().toISOString(),
+        endpoints: {
+          auth: 'POST /api/auth/login-testing',
+          productos:
+            'GET /api/productos, GET /api/productos/buscar, POST /api/productos/registro-rapido',
+          clientes: 'GET /api/clientes, GET /api/clientes/deudores',
+          ventas: 'GET /api/ventas, POST /api/ventas, POST /api/ventas/express',
+          abonos: 'GET /api/abonos, POST /api/abonos',
+          intereses: 'GET /api/intereses, POST /api/intereses/corte',
+          proveedores: 'GET /api/proveedores, GET /api/proveedores/con-deuda',
+          pagosProveedores: 'GET /api/pagos-proveedores',
+          reportes: 'GET /api/reportes, GET /api/reportes/top-productos',
+          categorias: 'GET /api/categorias',
+        },
       });
       return;
     }
@@ -66,8 +80,9 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
     if (pathname.startsWith('/api/pagos-proveedores'))
       return await pagosProveedoresHandler(req, res);
     if (pathname.startsWith('/api/reportes'))
-      // ✅ AGREGAR ESTA LÍNEA
       return await reportesHandler(req, res);
+    if (pathname.startsWith('/api/categorias'))
+      return await categoriasHandler(req, res);
     if (pathname.startsWith('/api/auth')) return await authHandler(req, res);
 
     // 404
@@ -78,13 +93,24 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         'GET  /api',
         'POST /api/auth/login-testing',
         'GET  /api/productos',
+        'GET  /api/productos/buscar?q=texto',
+        'GET  /api/productos/validar-stock/:id?cantidad=X',
+        'POST /api/productos/registro-rapido',
         'GET  /api/clientes',
+        'GET  /api/clientes/deudores',
         'GET  /api/ventas',
+        'POST /api/ventas/express',
+        'GET  /api/ventas/periodo?fechaInicio&fechaFin',
         'GET  /api/abonos',
         'GET  /api/intereses',
+        'POST /api/intereses/corte',
         'GET  /api/proveedores',
+        'GET  /api/proveedores/con-deuda',
         'GET  /api/pagos-proveedores',
-        'GET  /api/reportes', // ✅ AGREGAR ESTA LÍNEA
+        'GET  /api/reportes',
+        'GET  /api/reportes/top-productos',
+        'GET  /api/reportes/flujo-caja',
+        'GET  /api/categorias',
       ],
     });
   } catch (error) {

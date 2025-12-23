@@ -10,14 +10,14 @@ import { Cliente, Producto, Proveedor } from '../models/index.js';
 // =====================
 
 export const esquemaCrearProducto = Joi.object({
-  codigo: Joi.string()
-    .required()
+  codigoBarras: Joi.string() // ✅ CAMBIO: codigo → codigoBarras
+    .optional()
     .min(3)
     .max(50)
     .external(async (valor) => {
-      const existe = await Producto.findOne({ codigo: valor });
+      const existe = await Producto.findOne({ codigoBarras: valor });
       if (existe) {
-        throw new Error('El código de producto ya existe');
+        throw new Error('El código de barras ya existe');
       }
     }),
   nombre: Joi.string().required().min(3).max(200),
@@ -35,6 +35,7 @@ export const esquemaCrearProducto = Joi.object({
 }).unknown(false);
 
 export const esquemaActualizarProducto = Joi.object({
+  codigoBarras: Joi.string().optional().min(3).max(50), // ✅ CAMBIO
   nombre: Joi.string().optional().min(3).max(200),
   descripcion: Joi.string().optional().max(500),
   precioVenta: Joi.number().optional().positive().precision(2),
@@ -52,8 +53,14 @@ export const esquemaActualizarProducto = Joi.object({
   .unknown(false)
   .min(1);
 
+// ✅ NUEVO: Esquema para registro rápido
+export const esquemaRegistroRapidoProducto = Joi.object({
+  codigoBarras: Joi.string().required().min(3).max(50),
+  cantidad: Joi.number().optional().min(1).integer().default(1),
+}).unknown(false);
+
 // =====================
-// CLIENTES
+// CLIENTES (sin cambios)
 // =====================
 
 export const esquemaCrearCliente = Joi.object({
@@ -86,7 +93,7 @@ export const esquemaActualizarCliente = Joi.object({
   .min(1);
 
 // =====================
-// VENTAS
+// VENTAS (sin cambios)
 // =====================
 
 export const esquemaCrearVenta = Joi.object({
@@ -118,7 +125,7 @@ export const esquemaCrearVenta = Joi.object({
 }).unknown(false);
 
 // =====================
-// ABONOS A CLIENTES
+// ABONOS (sin cambios)
 // =====================
 
 export const esquemaCrearAbono = Joi.object({
@@ -134,7 +141,7 @@ export const esquemaCrearAbono = Joi.object({
 }).unknown(false);
 
 // =====================
-// PROVEEDORES
+// PROVEEDORES (sin cambios)
 // =====================
 
 export const esquemaCrearProveedor = Joi.object({
@@ -169,7 +176,7 @@ export const esquemaActualizarProveedor = Joi.object({
   .min(1);
 
 // =====================
-// PAGOS A PROVEEDORES
+// PAGOS A PROVEEDORES (sin cambios)
 // =====================
 
 export const esquemaCrearPagoProveedor = Joi.object({

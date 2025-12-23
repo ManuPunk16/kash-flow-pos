@@ -77,6 +77,45 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           }
         }
 
+        // GET /api/ventas/periodo?fechaInicio=YYYY-MM-DD&fechaFin=YYYY-MM-DD
+        if (rutaVenta.includes('/periodo')) {
+          const { searchParams } = new URL(
+            req.url || '',
+            `http://${req.headers.host}`
+          );
+          const fechaInicioStr = searchParams.get('fechaInicio');
+          const fechaFinStr = searchParams.get('fechaFin');
+
+          if (!fechaInicioStr || !fechaFinStr) {
+            res.status(400).json({
+              exito: false,
+              error: 'Parámetros requeridos',
+              mensaje:
+                'Debe proporcionar fechaInicio y fechaFin (formato: YYYY-MM-DD)',
+            });
+            return;
+          }
+
+          const fechaInicio = new Date(fechaInicioStr);
+          const fechaFin = new Date(fechaFinStr);
+
+          const ventas = await VentasService.obtenerPorFecha(
+            fechaInicio,
+            fechaFin
+          );
+
+          res.status(200).json({
+            exito: true,
+            datos: ventas,
+            cantidad: ventas.length,
+            periodo: {
+              inicio: fechaInicio.toISOString(),
+              fin: fechaFin.toISOString(),
+            },
+          });
+          return;
+        }
+
         // GET /api/ventas/[id]
         const ventaId = rutaVenta.replace('/', '');
         if (ventaId && /^[0-9a-fA-F]{24}$/.test(ventaId)) {
@@ -108,6 +147,104 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         return;
 
       case 'POST':
+        // POST /api/ventas/express - Venta directa de 1 producto
+        if (rutaVenta.includes('/express')) {
+          const {
+            productoId,
+            clienteId,
+            usuarioId,
+            cantidad = 1,
+            metodoPago,
+          } = req.body;
+
+          if (!productoId || !clienteId || !usuarioId || !metodoPago) {
+            res.status(400).json({
+              exito: false,
+              error: 'Datos incompletos',
+              mensaje:
+                'Se requiere: productoId, clienteId, usuarioId, metodoPago',
+            });
+            return;
+          }
+
+          // Validar stock
+          const hayStock = await ProductosService.validarStock(
+            productoId,
+            cantidad
+          );
+          if (!hayStock) {
+            res.status(400).json({
+              exito: false,
+              error: 'Stock insuficiente',
+            });
+            return;
+          }
+
+          // Obtener datos del producto
+          const producto = await Producto.findById(productoId);
+          if (!producto) {
+            res.status(404).json({
+              exito: false,
+              error: 'Producto no encontrado',
+            });
+            return;
+          }
+
+          const cliente = await Cliente.findById(clienteId);
+          const usuario = await Usuario.findById(usuarioId);
+
+          if (!cliente || !usuario) {
+            res.status(404).json({
+              exito: false,
+              error: 'Cliente o usuario no encontrado',
+            });
+            return;
+          }
+
+          // Calcular montos
+          const subtotal = producto.precioVenta * cantidad;
+          const ganancia =
+            (producto.precioVenta - producto.costoUnitario) * cantidad;
+
+          const datosVenta = {
+            numeroVenta: `VTA-${new Date().toISOString().split('T')[0]}-${uuid()
+              .substring(0, 8)
+              .toUpperCase()}`,
+            clienteId,
+            nombreCliente: `${cliente.nombre} ${cliente.apellido}`,
+            usuarioId,
+            nombreUsuario: `${usuario.nombre} ${usuario.apellido}`,
+            items: [
+              {
+                productoId,
+                nombreProducto: producto.nombre,
+                cantidad,
+                precioUnitario: producto.precioVenta,
+                costoUnitario: producto.costoUnitario,
+                subtotal,
+                ganancia,
+                esConsignacion: producto.esConsignacion,
+              },
+            ],
+            subtotal,
+            descuento: 0,
+            total: subtotal,
+            metodoPago,
+            gananciaTotal: ganancia,
+            estado: 'completada' as const,
+            fechaVenta: new Date(),
+          };
+
+          const ventaCreada = await VentasService.crear(datosVenta);
+
+          res.status(201).json({
+            exito: true,
+            mensaje: '✅ Venta express registrada',
+            dato: ventaCreada,
+          });
+          return;
+        }
+
         const { error, value } = esquemaCrearVenta.validate(req.body, {
           abortEarly: false,
           stripUnknown: true,

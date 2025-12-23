@@ -3,7 +3,8 @@ import { VercelResponse } from '@vercel/node';
 import { verificarAutenticacion } from '../middleware/autenticacion.js';
 import { esquemaCrearVenta } from '../validacion/schemas.js';
 import { VentasService } from '../services/VentasService.js';
-import { Venta, Cliente, Usuario } from '../models/index.js';
+import { ProductosService } from '../services/ProductosService.js';
+import { Venta, Cliente, Usuario, Producto } from '../models/index.js';
 import { conectarMongoDB } from '../config/database.js';
 import { v4 as uuid } from 'uuid';
 

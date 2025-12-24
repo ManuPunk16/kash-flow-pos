@@ -14,28 +14,32 @@ import pagosProveedoresHandler from '../../_lib/handlers/pagos-proveedores.js';
 import reportesHandler from '../../_lib/handlers/reportes.js';
 import categoriasHandler from '../../_lib/handlers/categorias.js';
 
-// ✅ Lista de orígenes permitidos
-const ORIGENES_PERMITIDOS = [
-  'http://localhost:4200',
-  'http://localhost:3000',
-  'https://kash-flow-pos.vercel.app',
-];
-
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
 
-  // ✅ Configurar CORS dinámicamente
+  // ✅ CORS Dinámico - Permitir localhost Y producción
   const origin = req.headers.origin || '';
+  const origenesPermitidos = [
+    'http://localhost:4200',
+    'http://localhost:3000',
+    'http://127.0.0.1:4200',
+    'https://kash-flow-pos.vercel.app',
+  ];
 
-  if (ORIGENES_PERMITIDOS.includes(origin)) {
+  if (origenesPermitidos.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (
+    origin.startsWith('http://localhost') ||
+    origin.startsWith('http://127.0.0.1')
+  ) {
+    // Permitir cualquier puerto de localhost en desarrollo
     res.setHeader('Access-Control-Allow-Origin', origin);
   } else {
-    // En desarrollo, permitir cualquier origen local
-    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-    } else {
-      res.setHeader('Access-Control-Allow-Origin', ORIGENES_PERMITIDOS[0]);
-    }
+    // Fallback para producción
+    res.setHeader(
+      'Access-Control-Allow-Origin',
+      'https://kash-flow-pos.vercel.app'
+    );
   }
 
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -55,7 +59,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   }
 
   try {
-    // Conectar a MongoDB antes de procesar requests
+    // Conectar a MongoDB
     if (!pathname.includes('/auth/')) {
       await conectarMongoDB();
     }
@@ -65,7 +69,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       res.status(200).json({
         exito: true,
         mensaje: '✅ KashFlow POS API funcionando correctamente',
-        version: '2.1.0',
+        version: '2.2.0',
         timestamp: new Date().toISOString(),
         endpoints: {
           auth: 'POST /api/auth/login-testing',
@@ -84,7 +88,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       return;
     }
 
-    // Routing de handlers
+    // Routing
     if (pathname.startsWith('/api/abonos'))
       return await abonosHandler(req, res);
     if (pathname.startsWith('/api/clientes'))

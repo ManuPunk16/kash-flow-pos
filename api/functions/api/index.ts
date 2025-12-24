@@ -14,12 +14,31 @@ import pagosProveedoresHandler from '../../_lib/handlers/pagos-proveedores.js';
 import reportesHandler from '../../_lib/handlers/reportes.js';
 import categoriasHandler from '../../_lib/handlers/categorias.js';
 
+// ✅ Lista de orígenes permitidos
+const ORIGENES_PERMITIDOS = [
+  'http://localhost:4200',
+  'http://localhost:3000',
+  'https://kash-flow-pos.vercel.app',
+];
+
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
 
-  // CORS Global
+  // ✅ Configurar CORS dinámicamente
+  const origin = req.headers.origin || '';
+
+  if (ORIGENES_PERMITIDOS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    // En desarrollo, permitir cualquier origen local
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', ORIGENES_PERMITIDOS[0]);
+    }
+  }
+
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
   res.setHeader(
     'Access-Control-Allow-Methods',
     'GET,OPTIONS,PATCH,DELETE,POST,PUT'
@@ -29,13 +48,14 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
 
+  // ✅ Manejar preflight OPTIONS
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
   try {
-    // ✅ Conectar a MongoDB antes de procesar requests
+    // Conectar a MongoDB antes de procesar requests
     if (!pathname.includes('/auth/')) {
       await conectarMongoDB();
     }
@@ -45,7 +65,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       res.status(200).json({
         exito: true,
         mensaje: '✅ KashFlow POS API funcionando correctamente',
-        version: '2.0.0', // ✅ Incrementar versión
+        version: '2.1.0',
         timestamp: new Date().toISOString(),
         endpoints: {
           auth: 'POST /api/auth/login-testing',
@@ -64,7 +84,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       return;
     }
 
-    // ✅ Routing de handlers
+    // Routing de handlers
     if (pathname.startsWith('/api/abonos'))
       return await abonosHandler(req, res);
     if (pathname.startsWith('/api/clientes'))

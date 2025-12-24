@@ -17,29 +17,35 @@ import categoriasHandler from '../../_lib/handlers/categorias.js';
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
 
-  // ✅ CORS Dinámico - Permitir localhost Y producción
+  // ✅ CORS - PERMITIR LOCALHOST SIEMPRE
   const origin = req.headers.origin || '';
+
+  console.log('📍 Origin recibido:', origin);
+
+  // Lista de orígenes permitidos
   const origenesPermitidos = [
     'http://localhost:4200',
     'http://localhost:3000',
     'http://127.0.0.1:4200',
+    'http://127.0.0.1:3000',
     'https://kash-flow-pos.vercel.app',
   ];
 
-  if (origenesPermitidos.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else if (
+  // Verificar si el origin está en la lista O si es localhost con cualquier puerto
+  if (
+    origenesPermitidos.includes(origin) ||
     origin.startsWith('http://localhost') ||
     origin.startsWith('http://127.0.0.1')
   ) {
-    // Permitir cualquier puerto de localhost en desarrollo
     res.setHeader('Access-Control-Allow-Origin', origin);
+    console.log('✅ CORS permitido para:', origin);
   } else {
-    // Fallback para producción
+    // Fallback: permitir el dominio de producción
     res.setHeader(
       'Access-Control-Allow-Origin',
       'https://kash-flow-pos.vercel.app'
     );
+    console.log('⚠️ Origin no reconocido, usando producción');
   }
 
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -54,6 +60,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
 
   // ✅ Manejar preflight OPTIONS
   if (req.method === 'OPTIONS') {
+    console.log('✅ Preflight OPTIONS procesado');
     res.status(200).end();
     return;
   }
@@ -69,7 +76,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       res.status(200).json({
         exito: true,
         mensaje: '✅ KashFlow POS API funcionando correctamente',
-        version: '2.2.0',
+        version: '2.4.0',
         timestamp: new Date().toISOString(),
         endpoints: {
           auth: 'POST /api/auth/login-testing',

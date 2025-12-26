@@ -1,4 +1,10 @@
 import { Schema, model, Document, Types } from 'mongoose';
+import {
+  MetodoPago,
+  METODOS_PAGO_VALORES,
+  EstadoVenta,
+  ESTADOS_VENTA_VALORES,
+} from '../enums/index.js';
 
 export interface IItemVenta {
   productoId: Types.ObjectId;
@@ -21,13 +27,13 @@ export interface IVenta extends Document {
   subtotal: number;
   descuento: number;
   total: number;
-  metodoPago: 'fiado' | 'efectivo' | 'transferencia';
+  metodoPago: MetodoPago; // ✅ Usar enum
   referenciaPago?: string;
   saldoClienteAntes?: number;
   saldoClienteDespues?: number;
   gananciaTotal: number;
   observaciones: string;
-  estado: 'completada' | 'anulada';
+  estado: EstadoVenta; // ✅ Usar enum
   fechaVenta: Date;
   fechaCreacion: Date;
 }
@@ -63,7 +69,7 @@ const ventaSchema = new Schema<IVenta>(
     total: { type: Number, required: true, min: 0 },
     metodoPago: {
       type: String,
-      enum: ['fiado', 'efectivo', 'transferencia'],
+      enum: METODOS_PAGO_VALORES,
       required: true,
     },
     referenciaPago: { type: String },
@@ -73,8 +79,8 @@ const ventaSchema = new Schema<IVenta>(
     observaciones: { type: String },
     estado: {
       type: String,
-      enum: ['completada', 'anulada'],
-      default: 'completada',
+      enum: ESTADOS_VENTA_VALORES,
+      default: EstadoVenta.COMPLETADA,
     },
     fechaVenta: { type: Date, required: true },
     fechaCreacion: { type: Date, default: () => new Date() },
@@ -86,8 +92,6 @@ const ventaSchema = new Schema<IVenta>(
 );
 
 ventaSchema.index({ clienteId: 1 });
-ventaSchema.index({ usuarioId: 1 });
 ventaSchema.index({ fechaVenta: -1 });
-ventaSchema.index({ metodoPago: 1 });
 
 export const Venta = model<IVenta>('Venta', ventaSchema);

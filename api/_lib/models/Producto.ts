@@ -1,4 +1,8 @@
 import { Schema, model, Document, Types } from 'mongoose';
+import {
+  CategoriaProducto,
+  CATEGORIAS_PRODUCTO_VALORES,
+} from '../enums/index.js';
 
 export interface IProducto extends Document {
   nombre: string;
@@ -10,24 +14,25 @@ export interface IProducto extends Document {
   stockMinimo: number;
   esConsignacion: boolean;
   proveedorId: Types.ObjectId | null;
-  categoria: string;
+  categoria: CategoriaProducto;
   activo: boolean;
   imagen: string;
-  pendienteCompletarDatos?: boolean; // ✅ NUEVO campo
+  pendienteCompletarDatos?: boolean;
   fechaCreacion: Date;
   fechaActualizacion: Date;
 }
 
 const productoSchema = new Schema<IProducto>(
   {
-    nombre: { type: String, required: true },
+    nombre: { type: String, required: true, trim: true },
     codigoBarras: {
       type: String,
       unique: true,
       sparse: true,
       trim: true,
+      uppercase: true,
     },
-    descripcion: { type: String, required: true },
+    descripcion: { type: String, required: true, trim: true },
     precioVenta: { type: Number, required: true, min: 0 },
     costoUnitario: { type: Number, required: true, min: 0 },
     stock: { type: Number, required: true, default: 0, min: 0 },
@@ -38,10 +43,15 @@ const productoSchema = new Schema<IProducto>(
       ref: 'Proveedor',
       default: null,
     },
-    categoria: { type: String, required: true },
+    categoria: {
+      type: String,
+      required: true,
+      enum: CATEGORIAS_PRODUCTO_VALORES, // ✅ Validación con enum
+      lowercase: true,
+    },
     activo: { type: Boolean, default: true },
     imagen: { type: String, default: null },
-    pendienteCompletarDatos: { type: Boolean, default: false }, // ✅ NUEVO
+    pendienteCompletarDatos: { type: Boolean, default: false },
     fechaCreacion: { type: Date, default: () => new Date() },
     fechaActualizacion: { type: Date, default: () => new Date() },
   },
@@ -51,14 +61,11 @@ const productoSchema = new Schema<IProducto>(
   }
 );
 
-// ✅ Índices
+// Índices
 productoSchema.index({ codigoBarras: 1 });
 productoSchema.index({ nombre: 'text', descripcion: 'text' });
-productoSchema.index({ nombre: 1 });
 productoSchema.index({ categoria: 1 });
-productoSchema.index({ esConsignacion: 1 });
-productoSchema.index({ stock: 1 });
 productoSchema.index({ activo: 1 });
-productoSchema.index({ pendienteCompletarDatos: 1 }); // ✅ NUEVO índice
+productoSchema.index({ proveedorId: 1 });
 
 export const Producto = model<IProducto>('Producto', productoSchema);

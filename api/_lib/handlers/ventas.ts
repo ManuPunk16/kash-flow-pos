@@ -1,12 +1,14 @@
 import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest.js';
 import { VercelResponse } from '@vercel/node';
 import { verificarAutenticacion } from '../middleware/autenticacion.js';
-import { esquemaCrearVenta } from '../validacion/schemas.js';
-import { VentasService } from '../services/VentasService.js';
-import { ProductosService } from '../services/ProductosService.js';
-import { Venta, Cliente, Usuario, Producto } from '../models/index.js';
+import { Venta, Cliente, Producto, Usuario } from '../models/index.js';
 import { conectarMongoDB } from '../config/database.js';
-import { v4 as uuid } from 'uuid';
+import {
+  MetodoPago,
+  METODOS_PAGO_VALORES,
+  esMetodoPagoValido,
+  EstadoVenta,
+} from '../enums/index.js';
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -26,10 +28,8 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   }
 
   try {
-    // ✅ Conectar a MongoDB
     await conectarMongoDB();
 
-    // ✅ Autenticación obligatoria
     let autenticado = false;
     await verificarAutenticacion(req, res, () => {
       autenticado = true;
@@ -39,23 +39,18 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       return;
     }
 
-    // ✅ Extraer ruta correctamente
     const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
     const rutaVenta = pathname.replace('/api/ventas', '') || '/';
 
-    console.log('🔍 Debug ventas:', {
-      urlCompleta: req.url,
-      pathname,
-      rutaVenta,
-      metodo: req.method,
-    });
-
-    // ✅ Routing por método
     switch (req.method) {
       case 'GET':
-        // GET /api/ventas - Obtener todas
+        // GET /api/ventas
         if (rutaVenta === '/' || rutaVenta === '') {
-          const ventas = await VentasService.obtenerTodas();
+          const ventas = await Venta.find()
+            .sort({ fechaVenta: -1 })
+            .limit(100)
+            .lean();
+
           res.status(200).json({
             exito: true,
             datos: ventas,
@@ -64,67 +59,10 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        // GET /api/ventas/cliente/[clienteId]
-        if (rutaVenta.includes('/cliente/')) {
-          const clienteId = rutaVenta.split('/cliente/')[1]?.split('/')[0];
-          if (clienteId && /^[0-9a-fA-F]{24}$/.test(clienteId)) {
-            const ventas = await VentasService.obtenerPorCliente(clienteId);
-            res.status(200).json({
-              exito: true,
-              datos: ventas,
-              cantidad: ventas.length,
-            });
-            return;
-          }
-        }
-
-        // GET /api/ventas/periodo?fechaInicio=YYYY-MM-DD&fechaFin=YYYY-MM-DD
-        if (rutaVenta.includes('/periodo')) {
-          const { searchParams } = new URL(
-            req.url || '',
-            `http://${req.headers.host}`
-          );
-          const fechaInicioStr = searchParams.get('fechaInicio');
-          const fechaFinStr = searchParams.get('fechaFin');
-
-          if (!fechaInicioStr || !fechaFinStr) {
-            res.status(400).json({
-              exito: false,
-              error: 'Parámetros requeridos',
-              mensaje:
-                'Debe proporcionar fechaInicio y fechaFin (formato: YYYY-MM-DD)',
-            });
-            return;
-          }
-
-          const fechaInicio = new Date(fechaInicioStr);
-          const fechaFin = new Date(fechaFinStr);
-
-          const ventas = await VentasService.obtenerPorFecha(
-            fechaInicio,
-            fechaFin
-          );
-
-          res.status(200).json({
-            exito: true,
-            datos: ventas,
-            cantidad: ventas.length,
-            periodo: {
-              inicio: fechaInicio.toISOString(),
-              fin: fechaFin.toISOString(),
-            },
-          });
-          return;
-        }
-
-        // GET /api/ventas/[id]
+        // GET /api/ventas/:id
         const ventaId = rutaVenta.replace('/', '');
         if (ventaId && /^[0-9a-fA-F]{24}$/.test(ventaId)) {
-          const venta = await Venta.findById(ventaId)
-            .populate('clienteId')
-            .populate('usuarioId')
-            .populate('items.productoId')
-            .lean();
+          const venta = await Venta.findById(ventaId).lean();
 
           if (!venta) {
             res.status(404).json({
@@ -148,243 +86,155 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         return;
 
       case 'POST':
-        // POST /api/ventas/express - Venta directa de 1 producto
-        if (rutaVenta.includes('/express')) {
-          const {
-            productoId,
-            clienteId,
-            usuarioId,
-            cantidad = 1,
-            metodoPago,
-          } = req.body;
+        const { clienteId, items, metodoPago, descuento, observaciones } =
+          req.body;
 
-          if (!productoId || !clienteId || !usuarioId || !metodoPago) {
-            res.status(400).json({
-              exito: false,
-              error: 'Datos incompletos',
-              mensaje:
-                'Se requiere: productoId, clienteId, usuarioId, metodoPago',
-            });
-            return;
-          }
+        // ✅ Validar método de pago usando enum
+        if (!metodoPago || !esMetodoPagoValido(metodoPago)) {
+          res.status(400).json({
+            exito: false,
+            error: 'Método de pago inválido',
+            metodos_validos: METODOS_PAGO_VALORES,
+          });
+          return;
+        }
 
-          // Validar stock
-          const hayStock = await ProductosService.validarStock(
-            productoId,
-            cantidad
-          );
-          if (!hayStock) {
-            res.status(400).json({
-              exito: false,
-              error: 'Stock insuficiente',
-            });
-            return;
-          }
+        // Validaciones básicas
+        if (
+          !clienteId ||
+          !items ||
+          !Array.isArray(items) ||
+          items.length === 0
+        ) {
+          res.status(400).json({
+            exito: false,
+            error: 'Datos de venta incompletos',
+          });
+          return;
+        }
 
-          // Obtener datos del producto
-          const producto = await Producto.findById(productoId);
+        // Verificar cliente
+        const cliente = await Cliente.findById(clienteId);
+        if (!cliente) {
+          res.status(404).json({
+            exito: false,
+            error: 'Cliente no encontrado',
+          });
+          return;
+        }
+
+        // Validar stock de productos
+        for (const item of items) {
+          const producto = await Producto.findById(item.productoId);
           if (!producto) {
             res.status(404).json({
               exito: false,
-              error: 'Producto no encontrado',
+              error: `Producto ${item.nombreProducto} no encontrado`,
             });
             return;
           }
 
-          const cliente = await Cliente.findById(clienteId);
-          const usuario = await Usuario.findById(usuarioId);
-
-          if (!cliente || !usuario) {
-            res.status(404).json({
+          if (producto.stock < item.cantidad) {
+            res.status(400).json({
               exito: false,
-              error: 'Cliente o usuario no encontrado',
+              error: `Stock insuficiente para ${producto.nombre}. Disponible: ${producto.stock}`,
             });
             return;
           }
-
-          // Calcular montos
-          const subtotal = producto.precioVenta * cantidad;
-          const ganancia =
-            (producto.precioVenta - producto.costoUnitario) * cantidad;
-
-          const datosVenta = {
-            numeroVenta: `VTA-${new Date().toISOString().split('T')[0]}-${uuid()
-              .substring(0, 8)
-              .toUpperCase()}`,
-            clienteId,
-            nombreCliente: `${cliente.nombre} ${cliente.apellido}`,
-            usuarioId,
-            nombreUsuario: `${usuario.nombre} ${usuario.apellido}`,
-            items: [
-              {
-                productoId,
-                nombreProducto: producto.nombre,
-                cantidad,
-                precioUnitario: producto.precioVenta,
-                costoUnitario: producto.costoUnitario,
-                subtotal,
-                ganancia,
-                esConsignacion: producto.esConsignacion,
-              },
-            ],
-            subtotal,
-            descuento: 0,
-            total: subtotal,
-            metodoPago,
-            gananciaTotal: ganancia,
-            estado: 'completada' as const,
-            fechaVenta: new Date(),
-          };
-
-          const ventaCreada = await VentasService.crear(datosVenta);
-
-          res.status(201).json({
-            exito: true,
-            mensaje: '✅ Venta express registrada',
-            dato: ventaCreada,
-          });
-          return;
         }
 
-        const { error, value } = esquemaCrearVenta.validate(req.body, {
-          abortEarly: false,
-          stripUnknown: true,
-        });
-
-        if (error) {
-          res.status(400).json({
-            exito: false,
-            error: 'Validación fallida',
-            detalles: error.details.map((d) => ({
-              campo: d.path.join('.'),
-              mensaje: d.message,
-            })),
-          });
-          return;
-        }
-
-        const {
-          clienteId,
-          usuarioId,
-          items,
-          descuento = 0,
-          metodoPago,
-          referenciaPago,
-          observaciones,
-        } = value;
-
-        if (!items || items.length === 0) {
-          res.status(400).json({
-            exito: false,
-            error: 'Validación fallida',
-            mensaje: 'La venta debe contener al menos un producto',
-          });
-          return;
-        }
-
-        let subtotal = 0;
-        let gananciaTotal = 0;
-
-        const itemsProcesados = items.map(
-          (item: {
-            productoId: string;
-            cantidad: number;
-            precioUnitario: number;
-            costoUnitario: number;
-          }) => {
-            const cantidad = item.cantidad;
-            const precioUnitario = item.precioUnitario;
-            const costoUnitario = item.costoUnitario;
-
-            const subtotalItem = cantidad * precioUnitario;
-            const gananciaItem = (precioUnitario - costoUnitario) * cantidad;
-
-            subtotal += subtotalItem;
-            gananciaTotal += gananciaItem;
-
-            return {
-              productoId: item.productoId,
-              nombreProducto: '',
-              cantidad,
-              precioUnitario,
-              costoUnitario,
-              subtotal: subtotalItem,
-              ganancia: gananciaItem,
-              esConsignacion: false,
-            };
-          }
+        // Calcular totales
+        const subtotal = items.reduce(
+          (sum: number, item: any) => sum + item.subtotal,
+          0
+        );
+        const descuentoAplicado = descuento || 0;
+        const total = subtotal - descuentoAplicado;
+        const gananciaTotal = items.reduce(
+          (sum: number, item: any) => sum + item.ganancia,
+          0
         );
 
-        const total = subtotal - descuento;
+        // Generar número de venta único
+        const ultimaVenta = await Venta.findOne()
+          .sort({ fechaCreacion: -1 })
+          .lean();
+        const ultimoNumero = ultimaVenta
+          ? parseInt(ultimaVenta.numeroVenta.split('-')[1], 10)
+          : 0;
+        const numeroVenta = `V-${String(ultimoNumero + 1).padStart(6, '0')}`;
 
-        const cliente = await Cliente.findById(clienteId);
-        const usuario = await Usuario.findById(usuarioId);
-
-        if (!cliente || !usuario) {
+        // Obtener usuario
+        const usuario = await Usuario.findOne({ firebaseUid: req.usuario.uid });
+        if (!usuario) {
           res.status(404).json({
             exito: false,
-            error: 'Cliente o usuario no encontrado',
+            error: 'Usuario no encontrado',
           });
           return;
         }
 
-        const datosVenta = {
-          numeroVenta: `VTA-${new Date().toISOString().split('T')[0]}-${uuid()
-            .substring(0, 8)
-            .toUpperCase()}`,
+        // Registrar saldo anterior
+        const saldoAnterior = cliente.saldoActual;
+
+        // ✅ Actualizar saldo si es fiado (usando enum)
+        if (metodoPago === MetodoPago.FIADO) {
+          cliente.saldoActual += total;
+          cliente.saldoHistorico += total;
+          cliente.ultimaCompra = new Date();
+          await cliente.save();
+        }
+
+        // Crear venta
+        const nuevaVenta = new Venta({
+          numeroVenta,
           clienteId,
           nombreCliente: `${cliente.nombre} ${cliente.apellido}`,
-          usuarioId,
+          usuarioId: usuario._id,
           nombreUsuario: `${usuario.nombre} ${usuario.apellido}`,
-          items: itemsProcesados,
+          items,
           subtotal,
-          descuento,
+          descuento: descuentoAplicado,
           total,
           metodoPago,
-          referenciaPago,
+          saldoClienteAntes: saldoAnterior,
+          saldoClienteDespues: cliente.saldoActual,
           gananciaTotal,
-          observaciones,
-          estado: 'completada' as const,
+          observaciones: observaciones || '',
+          estado: EstadoVenta.COMPLETADA, // ✅ Usar enum
           fechaVenta: new Date(),
-        };
+        });
 
-        const ventaCreada = await VentasService.crear(datosVenta);
+        await nuevaVenta.save();
+
+        // Actualizar stock de productos
+        for (const item of items) {
+          await Producto.findByIdAndUpdate(item.productoId, {
+            $inc: { stock: -item.cantidad },
+          });
+        }
 
         res.status(201).json({
           exito: true,
           mensaje: 'Venta registrada exitosamente ✅',
-          dato: ventaCreada,
+          dato: nuevaVenta,
         });
         return;
 
-      case 'PUT':
-        const idVentaActualizar = rutaVenta.replace('/', '');
-        if (
-          !idVentaActualizar ||
-          !/^[0-9a-fA-F]{24}$/.test(idVentaActualizar)
-        ) {
+      case 'DELETE':
+        // Anular venta
+        const ventaIdEliminar = rutaVenta.replace('/', '');
+
+        if (!ventaIdEliminar || !/^[0-9a-fA-F]{24}$/.test(ventaIdEliminar)) {
           res.status(400).json({
             exito: false,
-            error: 'ID de venta requerido',
+            error: 'ID de venta inválido',
           });
           return;
         }
 
-        const { estado } = req.body;
-
-        if (estado !== 'anulada') {
-          res.status(400).json({
-            exito: false,
-            error: 'Operación no permitida',
-            mensaje:
-              'Solo se puede cambiar el estado a "anulada". Para editar, cree una nueva venta',
-          });
-          return;
-        }
-
-        const ventaExistente = await Venta.findById(idVentaActualizar);
-
-        if (!ventaExistente) {
+        const ventaAnular = await Venta.findById(ventaIdEliminar);
+        if (!ventaAnular) {
           res.status(404).json({
             exito: false,
             error: 'Venta no encontrada',
@@ -392,21 +242,40 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        if (ventaExistente.estado === 'anulada') {
+        // ✅ Verificar estado (usando enum)
+        if (ventaAnular.estado === EstadoVenta.ANULADA) {
           res.status(400).json({
             exito: false,
-            error: 'Venta ya anulada',
+            error: 'La venta ya fue anulada',
           });
           return;
         }
 
-        ventaExistente.estado = 'anulada';
-        await ventaExistente.save();
+        // Revertir stock
+        for (const item of ventaAnular.items) {
+          await Producto.findByIdAndUpdate(item.productoId, {
+            $inc: { stock: item.cantidad },
+          });
+        }
+
+        // ✅ Si era fiado, revertir saldo (usando enum)
+        if (ventaAnular.metodoPago === MetodoPago.FIADO) {
+          await Cliente.findByIdAndUpdate(ventaAnular.clienteId, {
+            $inc: {
+              saldoActual: -ventaAnular.total,
+              saldoHistorico: -ventaAnular.total,
+            },
+          });
+        }
+
+        // ✅ Actualizar estado (usando enum)
+        ventaAnular.estado = EstadoVenta.ANULADA;
+        await ventaAnular.save();
 
         res.status(200).json({
           exito: true,
           mensaje: 'Venta anulada exitosamente ✅',
-          dato: ventaExistente,
+          dato: ventaAnular,
         });
         return;
 
@@ -420,6 +289,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
     }
   } catch (error) {
     console.error('❌ Error en ventas API:', error);
+
     res.status(500).json({
       exito: false,
       error: 'Error al procesar solicitud',

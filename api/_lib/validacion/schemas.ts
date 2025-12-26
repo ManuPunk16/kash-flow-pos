@@ -1,5 +1,9 @@
 import Joi from 'joi';
-import { Cliente, Producto, Proveedor } from '../models/index.js';
+import {
+  CATEGORIAS_PRODUCTO_VALORES,
+  METODOS_PAGO_VALORES,
+  CATEGORIAS_EGRESO_VALORES,
+} from '../enums/index.js';
 
 /**
  * Esquemas de validación para todas las entidades
@@ -10,54 +14,43 @@ import { Cliente, Producto, Proveedor } from '../models/index.js';
 // =====================
 
 export const esquemaCrearProducto = Joi.object({
-  codigoBarras: Joi.string() // ✅ CAMBIO: codigo → codigoBarras
-    .optional()
-    .min(3)
-    .max(50)
-    .external(async (valor) => {
-      const existe = await Producto.findOne({ codigoBarras: valor });
-      if (existe) {
-        throw new Error('El código de barras ya existe');
-      }
-    }),
-  nombre: Joi.string().required().min(3).max(200),
-  descripcion: Joi.string().optional().max(500),
-  precioVenta: Joi.number().required().positive().precision(2),
-  costoUnitario: Joi.number().required().positive().precision(2),
+  nombre: Joi.string().required().min(2).max(100).trim(),
+  codigoBarras: Joi.string().optional().trim().uppercase(),
+  descripcion: Joi.string().required().min(5).max(500).trim(),
+  precioVenta: Joi.number().required().min(0),
+  costoUnitario: Joi.number().required().min(0),
   stock: Joi.number().required().min(0).integer(),
   stockMinimo: Joi.number().optional().min(0).integer().default(5),
   esConsignacion: Joi.boolean().optional().default(false),
-  proveedorId: Joi.string()
-    .optional()
-    .regex(/^[0-9a-fA-F]{24}$/),
-  categoria: Joi.string().required().min(2).max(100),
-  imagen: Joi.string().optional().uri(),
-}).unknown(false);
+  proveedorId: Joi.string().optional().hex().length(24),
+  categoria: Joi.string()
+    .required()
+    .valid(...CATEGORIAS_PRODUCTO_VALORES), // ✅ Usar enum
+  activo: Joi.boolean().optional().default(true),
+  imagen: Joi.string().optional(),
+});
 
 export const esquemaActualizarProducto = Joi.object({
-  codigoBarras: Joi.string().optional().min(3).max(50), // ✅ CAMBIO
-  nombre: Joi.string().optional().min(3).max(200),
-  descripcion: Joi.string().optional().max(500),
-  precioVenta: Joi.number().optional().positive().precision(2),
-  costoUnitario: Joi.number().optional().positive().precision(2),
+  nombre: Joi.string().optional().min(2).max(100).trim(),
+  codigoBarras: Joi.string().optional().trim().uppercase(),
+  descripcion: Joi.string().optional().min(5).max(500).trim(),
+  precioVenta: Joi.number().optional().min(0),
+  costoUnitario: Joi.number().optional().min(0),
   stock: Joi.number().optional().min(0).integer(),
   stockMinimo: Joi.number().optional().min(0).integer(),
   esConsignacion: Joi.boolean().optional(),
-  proveedorId: Joi.string()
+  proveedorId: Joi.string().optional().allow(null).hex().length(24),
+  categoria: Joi.string()
     .optional()
-    .regex(/^[0-9a-fA-F]{24}$/),
-  categoria: Joi.string().optional().min(2).max(100),
-  imagen: Joi.string().optional().uri(),
+    .valid(...CATEGORIAS_PRODUCTO_VALORES), // ✅ Usar enum
   activo: Joi.boolean().optional(),
-})
-  .unknown(false)
-  .min(1);
+  imagen: Joi.string().optional().allow(null),
+});
 
-// ✅ NUEVO: Esquema para registro rápido
 export const esquemaRegistroRapidoProducto = Joi.object({
-  codigoBarras: Joi.string().required().min(3).max(50),
+  codigoBarras: Joi.string().required().trim().uppercase(),
   cantidad: Joi.number().optional().min(1).integer().default(1),
-}).unknown(false);
+});
 
 // =====================
 // CLIENTES (sin cambios)
@@ -197,56 +190,108 @@ export const esquemaCrearPagoProveedor = Joi.object({
 
 // ✅ NUEVO: Esquema para crear egreso
 export const esquemaCrearEgreso = Joi.object({
-  concepto: Joi.string().required().trim().min(3).max(200).messages({
-    'string.empty': 'El concepto es obligatorio',
-    'string.min': 'El concepto debe tener al menos 3 caracteres',
-  }),
-  descripcion: Joi.string().trim().allow('').max(500),
-  monto: Joi.number().required().min(1).messages({
-    'number.base': 'El monto debe ser un número',
-    'number.min': 'El monto debe ser mayor a 0',
-  }),
+  concepto: Joi.string().required().min(3).max(200).trim(),
+  descripcion: Joi.string().optional().max(500).trim(),
+  monto: Joi.number().required().min(0),
   categoria: Joi.string()
     .required()
-    .valid(
-      'servicios',
-      'nomina',
-      'insumos',
-      'mantenimiento',
-      'transporte',
-      'otros'
-    )
-    .messages({
-      'any.only': 'Categoría inválida',
-    }),
+    .valid(...CATEGORIAS_EGRESO_VALORES), // ✅ Usar enum
   metodoPago: Joi.string()
     .required()
-    .valid('efectivo', 'transferencia', 'tarjeta')
-    .messages({
-      'any.only': 'Método de pago inválido',
-    }),
-  referenciaPago: Joi.string().trim().allow('').max(100),
-  beneficiario: Joi.string().trim().allow('').max(200),
-  observaciones: Joi.string().trim().allow('').max(500),
-  fechaEgreso: Joi.date().iso().optional(),
+    .valid(...METODOS_PAGO_VALORES), // ✅ Usar enum
+  referenciaPago: Joi.string().optional().trim(),
+  beneficiario: Joi.string().optional().trim(),
+  observaciones: Joi.string().optional().trim().allow(''),
+  fechaEgreso: Joi.date()
+    .optional()
+    .default(() => new Date()),
 });
 
 // ✅ NUEVO: Esquema para actualizar egreso
 export const esquemaActualizarEgreso = Joi.object({
-  concepto: Joi.string().trim().min(3).max(200),
-  descripcion: Joi.string().trim().allow('').max(500),
-  monto: Joi.number().min(1),
-  categoria: Joi.string().valid(
-    'servicios',
-    'nomina',
-    'insumos',
-    'mantenimiento',
-    'transporte',
-    'otros'
-  ),
-  metodoPago: Joi.string().valid('efectivo', 'transferencia', 'tarjeta'),
-  referenciaPago: Joi.string().trim().allow('').max(100),
-  beneficiario: Joi.string().trim().allow('').max(200),
-  observaciones: Joi.string().trim().allow('').max(500),
-  aprobado: Joi.boolean(),
-}).min(1);
+  concepto: Joi.string().optional().min(3).max(200).trim(),
+  descripcion: Joi.string().optional().max(500).trim(),
+  monto: Joi.number().optional().min(0),
+  categoria: Joi.string()
+    .optional()
+    .valid(...CATEGORIAS_EGRESO_VALORES), // ✅ Usar enum
+  metodoPago: Joi.string()
+    .optional()
+    .valid(...METODOS_PAGO_VALORES), // ✅ Usar enum
+  referenciaPago: Joi.string().optional().trim(),
+  beneficiario: Joi.string().optional().trim(),
+  observaciones: Joi.string().optional().trim().allow(''),
+  aprobado: Joi.boolean().optional(),
+  fechaEgreso: Joi.date().optional(),
+});
+
+// ✅ Cliente
+export const esquemaCrearCliente = Joi.object({
+  nombre: Joi.string().required().min(2).max(50).trim(),
+  apellido: Joi.string().required().min(2).max(50).trim(),
+  email: Joi.string().optional().email().lowercase().trim(),
+  telefono: Joi.string().optional().trim(),
+  identificacion: Joi.string().optional().trim(),
+  direccion: Joi.string().optional().trim(),
+});
+
+export const esquemaActualizarCliente = Joi.object({
+  nombre: Joi.string().optional().min(2).max(50).trim(),
+  apellido: Joi.string().optional().min(2).max(50).trim(),
+  email: Joi.string().optional().email().lowercase().trim(),
+  telefono: Joi.string().optional().trim(),
+  identificacion: Joi.string().optional().trim(),
+  direccion: Joi.string().optional().trim(),
+  activo: Joi.boolean().optional(),
+});
+
+// ✅ Proveedor
+export const esquemaCrearProveedor = Joi.object({
+  nombre: Joi.string().required().min(2).max(100).trim(),
+  contacto: Joi.string().optional().trim(),
+  email: Joi.string().optional().email().lowercase().trim(),
+  telefono: Joi.string().optional().trim(),
+  direccion: Joi.string().optional().trim(),
+  nit: Joi.string().optional().trim(),
+  terminoPago: Joi.number().optional().min(0).integer().default(30),
+});
+
+export const esquemaActualizarProveedor = Joi.object({
+  nombre: Joi.string().optional().min(2).max(100).trim(),
+  contacto: Joi.string().optional().trim(),
+  email: Joi.string().optional().email().lowercase().trim(),
+  telefono: Joi.string().optional().trim(),
+  direccion: Joi.string().optional().trim(),
+  nit: Joi.string().optional().trim(),
+  terminoPago: Joi.number().optional().min(0).integer(),
+  activo: Joi.boolean().optional(),
+});
+
+// ✅ Abono Cliente
+export const esquemaCrearAbonoCliente = Joi.object({
+  clienteId: Joi.string().required().hex().length(24),
+  monto: Joi.number().required().min(0),
+  metodoPago: Joi.string()
+    .required()
+    .valid(...METODOS_PAGO_VALORES), // ✅ Usar enum
+  referenciaPago: Joi.string().optional().trim(),
+  observaciones: Joi.string().optional().trim().allow(''),
+  fechaPago: Joi.date()
+    .optional()
+    .default(() => new Date()),
+});
+
+// ✅ Pago Proveedor
+export const esquemaCrearPagoProveedor = Joi.object({
+  proveedorId: Joi.string().required().hex().length(24),
+  monto: Joi.number().required().min(0),
+  metodoPago: Joi.string()
+    .required()
+    .valid(...METODOS_PAGO_VALORES), // ✅ Usar enum
+  referenciaPago: Joi.string().optional().trim(),
+  observaciones: Joi.string().optional().trim().allow(''),
+  comprobante: Joi.string().optional().trim(),
+  fechaPago: Joi.date()
+    .optional()
+    .default(() => new Date()),
+});

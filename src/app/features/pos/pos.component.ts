@@ -8,9 +8,15 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ProductosService } from '../../core/services/productos.service';
-import { AuthService } from '../../core/services/auth.service';
-import { Producto } from '../../core/models/producto.model';
+import { ProductosService } from '@core/services/productos.service';
+import { AuthService } from '@core/services/auth.service';
+import { Producto } from '@core/models/producto.model';
+
+interface RespuestaAPI<T> {
+  exito: boolean;
+  mensaje?: string;
+  datos?: T;
+}
 
 interface ItemCarrito {
   productoId: string;
@@ -22,6 +28,13 @@ interface ItemCarrito {
   esConsignacion: boolean;
   proveedorId: string | null;
   stockDisponible: number;
+}
+
+interface Cliente {
+  id: string;
+  nombre: string;
+  apellido: string;
+  saldoActual: number;
 }
 
 @Component({
@@ -39,7 +52,7 @@ export class PosComponent implements OnInit {
   private readonly todosLosProductos = signal<Producto[]>([]);
   protected readonly terminoBusqueda = signal('');
   protected readonly carrito = signal<ItemCarrito[]>([]);
-  protected readonly clienteSeleccionado = signal<any>(null);
+  protected readonly clienteSeleccionado = signal<Cliente | null>(null);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly mensajeAlerta = signal<string | null>(null);
@@ -88,7 +101,7 @@ export class PosComponent implements OnInit {
     this.error.set(null);
 
     this.productosService.obtenerTodos().subscribe({
-      next: (respuesta) => {
+      next: (respuesta: RespuestaAPI<Producto[]>) => {
         if (respuesta.exito && respuesta.datos) {
           this.todosLosProductos.set(respuesta.datos);
           console.log('✅ Productos cargados:', respuesta.datos.length);
@@ -96,7 +109,7 @@ export class PosComponent implements OnInit {
           this.error.set('No se encontraron productos');
         }
       },
-      error: (err) => {
+      error: (err: Error) => {
         console.error('❌ Error al cargar productos:', err);
         this.error.set('Error al conectar con el servidor');
       },
@@ -162,7 +175,7 @@ export class PosComponent implements OnInit {
         costoUnitario: producto.costoUnitario,
         subtotal: producto.precioVenta,
         esConsignacion: producto.esConsignacion,
-        proveedorId: producto.proveedorId,
+        proveedorId: producto.proveedorId ?? null,
         stockDisponible: producto.stock,
       };
 

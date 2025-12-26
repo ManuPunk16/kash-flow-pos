@@ -108,11 +108,11 @@
             "
           >
             <span class="text-base sm:text-lg">{{ cat.icono }}</span>
-            <span class="hidden sm:inline"
-              >{{ cat.etiqueta.split(' ')[1] }}</span
-            >
+            <!-- ✅ CORREGIDO: Mostrar etiqueta completa en desktop -->
+            <span class="hidden sm:inline">{{ cat.etiqueta }}</span>
+            <!-- ✅ CORREGIDO: Mostrar versión truncada segura en móvil -->
             <span class="sm:hidden"
-              >{{ cat.etiqueta.split(' ')[1].substring(0, 5) }}</span
+              >{{ obtenerEtiquetaCorta(cat.etiqueta) }}</span
             >
           </button>
           }
@@ -234,10 +234,7 @@
                 class="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold"
               >
                 <span>{{ obtenerIconoCategoria(egreso.categoria) }}</span>
-                <span
-                  >{{ obtenerNombreCategoria(egreso.categoria).split(" ")[1]
-                  }}</span
-                >
+                <span>{{ obtenerNombreCategoria(egreso.categoria) }}</span>
               </span>
             </div>
 
@@ -338,17 +335,14 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span
-                  class="inline-flex items-center gap-2 px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-semibold"
+                  class="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold"
                 >
                   <span>{{ obtenerIconoCategoria(egreso.categoria) }}</span>
-                  <span
-                    >{{ obtenerNombreCategoria(egreso.categoria).split(" ")[1]
-                    }}</span
-                  >
+                  <span>{{ obtenerNombreCategoria(egreso.categoria) }}</span>
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span class="text-lg font-bold text-red-600">
+                <span class="text-sm font-bold text-red-600">
                   {{ formatearMonto(egreso.monto) }}
                 </span>
               </td>
@@ -366,14 +360,14 @@
               <td class="px-6 py-4 whitespace-nowrap">
                 @if (egreso.aprobado) {
                 <span
-                  class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-bold"
+                  class="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-bold"
                 >
                   <span>✅</span>
                   <span>Aprobado</span>
                 </span>
                 } @else {
                 <span
-                  class="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-bold"
+                  class="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-bold"
                 >
                   <span>⏳</span>
                   <span>Pendiente</span>

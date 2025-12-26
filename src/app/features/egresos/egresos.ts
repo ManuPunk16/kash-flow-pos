@@ -9,6 +9,11 @@ import {
 import { CommonModule } from '@angular/common';
 import { EgresosService } from '@core/services/egresos.service';
 import { Egreso } from '@core/models/egreso.model';
+import {
+  CATEGORIAS_EGRESO_CATALOGO,
+  obtenerInfoCategoriaEgreso,
+  type CategoriaEgresoInfo,
+} from '@core/enums';
 
 @Component({
   selector: 'app-egresos',
@@ -27,6 +32,10 @@ export class Egresos implements OnInit {
   // Filtros
   protected readonly categoriaFiltro = signal<string | null>(null);
   protected readonly aprobadoFiltro = signal<boolean | null>(null);
+
+  // ✅ Usar catálogo de enums
+  protected readonly categorias: readonly CategoriaEgresoInfo[] =
+    CATEGORIAS_EGRESO_CATALOGO;
 
   // Estado derivado
   protected readonly totalGastos = computed(() =>
@@ -56,15 +65,6 @@ export class Egresos implements OnInit {
 
     return resultado;
   });
-
-  protected readonly categorias = [
-    { valor: 'servicios', etiqueta: '💡 Servicios', icono: '💡' },
-    { valor: 'nomina', etiqueta: '👨‍💼 Nómina', icono: '👨‍💼' },
-    { valor: 'insumos', etiqueta: '📦 Insumos', icono: '📦' },
-    { valor: 'mantenimiento', etiqueta: '🔧 Mantenimiento', icono: '🔧' },
-    { valor: 'transporte', etiqueta: '🚗 Transporte', icono: '🚗' },
-    { valor: 'otros', etiqueta: '📝 Otros', icono: '📝' },
-  ];
 
   ngOnInit(): void {
     this.cargarEgresos();
@@ -99,14 +99,34 @@ export class Egresos implements OnInit {
     this.aprobadoFiltro.set(aprobado);
   }
 
+  // ✅ NUEVO: Helper para truncar etiquetas de forma segura
+  protected obtenerEtiquetaCorta(etiqueta: string): string {
+    // Si la etiqueta es muy corta, retornarla completa
+    if (etiqueta.length <= 6) {
+      return etiqueta;
+    }
+
+    // Intentar quitar palabras comunes y tomar lo importante
+    const palabrasEliminar = ['Gastos de', 'Pago de', 'Compra de'];
+    let resultado = etiqueta;
+
+    for (const palabra of palabrasEliminar) {
+      resultado = resultado.replace(palabra, '').trim();
+    }
+
+    // Si aún es larga, truncar a 6 caracteres
+    return resultado.length > 6 ? resultado.substring(0, 6) : resultado;
+  }
+
+  // ✅ Usar funciones de los enums
   protected obtenerIconoCategoria(categoria: string): string {
-    const cat = this.categorias.find((c) => c.valor === categoria);
-    return cat?.icono || '📝';
+    const info = obtenerInfoCategoriaEgreso(categoria as any);
+    return info?.icono || '📝';
   }
 
   protected obtenerNombreCategoria(categoria: string): string {
-    const cat = this.categorias.find((c) => c.valor === categoria);
-    return cat?.etiqueta || categoria;
+    const info = obtenerInfoCategoriaEgreso(categoria as any);
+    return info?.etiqueta || categoria;
   }
 
   protected formatearFecha(fecha: Date): string {
@@ -124,3 +144,5 @@ export class Egresos implements OnInit {
     }).format(monto);
   }
 }
+
+export default Egresos;

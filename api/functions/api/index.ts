@@ -2,7 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { AuthenticatedRequest } from '../../_lib/tipos/AuthenticatedRequest.js';
 import { conectarMongoDB } from '../../_lib/config/database.js';
 
-// Importar handlers
+// ✅ Importar handlers
 import abonosHandler from '../../_lib/handlers/abonos.js';
 import clientesHandler from '../../_lib/handlers/clientes.js';
 import productosHandler from '../../_lib/handlers/productos.js';
@@ -13,7 +13,7 @@ import proveedoresHandler from '../../_lib/handlers/proveedores.js';
 import pagosProveedoresHandler from '../../_lib/handlers/pagos-proveedores.js';
 import reportesHandler from '../../_lib/handlers/reportes.js';
 import categoriasHandler from '../../_lib/handlers/categorias.js';
-import egresosHandler from '../../_lib/handlers/egresos.js'; // ✅ NUEVO
+import egresosHandler from '../../_lib/handlers/egresos.js';
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
@@ -52,7 +52,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
 
-  // ✅ DESHABILITAR CACHÉ DE VERCEL
+  // ✅ DESHABILITAR CACHÉ
   res.setHeader(
     'Cache-Control',
     'no-store, no-cache, must-revalidate, proxy-revalidate'
@@ -77,7 +77,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       res.status(200).json({
         exito: true,
         mensaje: '✅ KashFlow POS API funcionando',
-        version: '2.5.1',
+        version: '2.6.0', // ✅ Incrementar versión
         timestamp: new Date().toISOString(),
         cors: {
           originRecibido: origin,
@@ -87,7 +87,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       return;
     }
 
-    // Routing
+    // ✅ Routing
     if (pathname.startsWith('/api/abonos'))
       return await abonosHandler(req, res);
     if (pathname.startsWith('/api/clientes'))

@@ -1,0 +1,294 @@
+<div class="min-h-screen bg-gray-50 p-4 overflow-auto">
+  <div class="max-w-7xl mx-auto">
+    <!-- Mensaje de Alerta -->
+    @if (mensajeAlerta()) {
+    <div
+      class="mb-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 rounded animate-pulse"
+    >
+      <p class="text-sm font-semibold">{{ mensajeAlerta() }}</p>
+    </div>
+    }
+
+    <!-- Grid principal -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <!-- Productos (2/3) -->
+      <div class="lg:col-span-2 bg-white rounded-lg shadow-sm p-4">
+        <!-- Header con Buscador -->
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold">
+            Productos ({{ productos().length }})
+          </h2>
+        </div>
+
+        <!-- 🔍 Buscador -->
+        <div class="mb-4 relative">
+          <input
+            type="text"
+            [value]="terminoBusqueda()"
+            (input)="actualizarBusqueda($event)"
+            placeholder="Buscar por nombre, código o categoría..."
+            class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
+          />
+          <span
+            class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl"
+          >
+            🔍
+          </span>
+
+          @if (terminoBusqueda()) {
+          <button
+            (click)="limpiarBusqueda()"
+            class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 font-bold"
+          >
+            ✕
+          </button>
+          }
+        </div>
+
+        <!-- Loading State -->
+        @if (loading()) {
+        <div class="text-center py-12">
+          <div
+            class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"
+          ></div>
+          <p class="text-gray-600 mt-4">Cargando productos...</p>
+        </div>
+        }
+
+        <!-- Error State -->
+        @else if (error()) {
+        <div class="text-center py-12">
+          <div class="text-red-600 text-5xl mb-4">⚠️</div>
+          <p class="text-red-600 text-lg font-semibold">{{ error() }}</p>
+          <button
+            (click)="recargarProductos()"
+            class="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
+        }
+
+        <!-- Empty State (Sin Productos) -->
+        @else if (productos().length === 0 && !terminoBusqueda()) {
+        <div class="text-center py-12 text-gray-500">
+          <p class="text-lg">No hay productos disponibles</p>
+          <p class="text-sm mt-2">Agrega productos desde el inventario</p>
+        </div>
+        }
+
+        <!-- Empty State (Sin Resultados de Búsqueda) -->
+        @else if (productos().length === 0 && terminoBusqueda()) {
+        <div class="text-center py-12 text-gray-500">
+          <div class="text-5xl mb-4">🔍</div>
+          <p class="text-lg font-semibold">No se encontraron productos</p>
+          <p class="text-sm mt-2">
+            Intenta buscar con otro término: "{{ terminoBusqueda() }}"
+          </p>
+          <button
+            (click)="limpiarBusqueda()"
+            class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+          >
+            Limpiar búsqueda
+          </button>
+        </div>
+        }
+
+        <!-- Grid de Productos -->
+        @else {
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"
+        >
+          @for (producto of productos(); track producto._id) {
+          <button
+            (click)="agregarAlCarrito(producto)"
+            class="bg-gray-50 hover:bg-blue-50 border-2 border-gray-200 hover:border-blue-400 rounded-lg p-3 text-left transition-all relative"
+            [disabled]="!puedeAgregarMas(producto)"
+            [class.opacity-50]="!puedeAgregarMas(producto)"
+            [class.cursor-not-allowed]="!puedeAgregarMas(producto)"
+          >
+            <!-- ✅ Badge de cantidad en carrito -->
+            @if (obtenerCantidadEnCarrito(producto._id) > 0) {
+            <span
+              class="absolute -top-2 -right-2 bg-blue-600 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center shadow-md z-10"
+            >
+              {{ obtenerCantidadEnCarrito(producto._id) }}
+            </span>
+            }
+
+            <!-- 📦 Nombre del Producto -->
+            <div class="text-sm font-semibold text-gray-800 mb-1 truncate">
+              {{ producto.nombre }}
+            </div>
+
+            <!-- 🏷️ Código de Barras -->
+            @if (producto.codigoBarras) {
+            <div
+              class="text-xs text-gray-500 font-mono mb-2 flex items-center gap-1"
+            >
+              <span>📊</span>
+              <span>{{ producto.codigoBarras }}</span>
+            </div>
+            }
+
+            <!-- 💰 Precio -->
+            <div class="text-lg font-bold text-green-600 mb-2">
+              ${{ producto.precioVenta.toLocaleString("es-MX") }}
+            </div>
+
+            <!-- 📦 Stock + Estado -->
+            <div class="text-xs mt-2 space-y-1">
+              @if (producto.stock === 0) {
+              <div class="flex items-center gap-1 text-red-600 font-semibold">
+                <span>❌</span>
+                <span>Sin stock</span>
+              </div>
+              } @else if (producto.stock < producto.stockMinimo) {
+              <div
+                class="flex items-center gap-1 text-yellow-600 font-semibold"
+              >
+                <span>⚠️</span>
+                <span>Stock bajo: {{ producto.stock }}</span>
+              </div>
+              } @else {
+              <div class="flex items-center gap-1 text-gray-600">
+                <span>✅</span>
+                <span>Stock: {{ producto.stock }}</span>
+              </div>
+              }
+
+              <!-- Cantidad en Carrito -->
+              @if (obtenerCantidadEnCarrito(producto._id) > 0) {
+              <div class="flex items-center gap-1 text-blue-600 font-semibold">
+                <span>🛒</span>
+                <span>
+                  En carrito: {{ obtenerCantidadEnCarrito(producto._id) }}/{{
+                    producto.stock
+                  }}
+                </span>
+              </div>
+              }
+
+              <!-- Categoría -->
+              @if (producto.categoria) {
+              <div class="flex items-center gap-1 text-gray-500">
+                <span>🏷️</span>
+                <span class="truncate">{{ producto.categoria }}</span>
+              </div>
+              }
+            </div>
+          </button>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- Carrito (1/3) -->
+      <div class="bg-white rounded-lg shadow-sm p-4 h-fit lg:sticky lg:top-4">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold">Carrito</h2>
+
+          @if (carrito().length > 0) {
+          <button
+            (click)="limpiarCarrito()"
+            class="text-sm text-red-600 hover:text-red-800 font-semibold"
+          >
+            Limpiar
+          </button>
+          }
+        </div>
+
+        @if (carrito().length === 0) {
+        <div class="text-center py-8 text-gray-500">
+          <p>Carrito vacío</p>
+          <p class="text-xs mt-2">Selecciona productos para agregar</p>
+        </div>
+        } @else {
+        <!-- Items del carrito -->
+        <div class="space-y-2 mb-4 max-h-96 overflow-y-auto">
+          @for (item of carrito(); track item.productoId) {
+          <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-semibold text-gray-800 truncate">
+                {{ item.nombreProducto }}
+              </div>
+              <div class="text-xs text-gray-600">
+                ${{ item.precioUnitario.toLocaleString("es-MX") }} c/u
+                <span
+                  class="ml-1"
+                  [class.text-red-600]="item.cantidad === item.stockDisponible"
+                  [class.text-yellow-600]="
+                    item.cantidad >= item.stockDisponible * 0.8 &&
+                    item.cantidad < item.stockDisponible
+                  "
+                >
+                  ({{ item.cantidad }}/{{ item.stockDisponible }})
+                </span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1 bg-white rounded border">
+                <button
+                  (click)="decrementarCantidad(item.productoId)"
+                  class="px-2 py-1 hover:bg-gray-100 text-gray-600 font-semibold"
+                >
+                  −
+                </button>
+
+                <span class="px-2 text-sm font-bold">{{ item.cantidad }}</span>
+
+                <button
+                  (click)="incrementarCantidad(item.productoId)"
+                  class="px-2 py-1 hover:bg-gray-100 text-gray-600 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  [disabled]="item.cantidad >= item.stockDisponible"
+                >
+                  +
+                </button>
+              </div>
+
+              <div
+                class="text-sm font-bold text-gray-800 min-w-[60px] text-right"
+              >
+                ${{ item.subtotal.toLocaleString("es-MX") }}
+              </div>
+
+              <button
+                (click)="eliminarDelCarrito(item.productoId)"
+                class="text-red-600 hover:text-red-800 font-bold text-lg"
+                title="Eliminar"
+              >
+                🗑️
+              </button>
+            </div>
+          </div>
+          }
+        </div>
+
+        <!-- Resumen -->
+        <div class="border-t pt-4 space-y-2">
+          <div class="flex justify-between text-sm text-gray-600">
+            <span>Items:</span>
+            <span class="font-semibold">{{ cantidadItems() }}</span>
+          </div>
+
+          <div class="flex justify-between items-center text-xl font-bold">
+            <span>Total:</span>
+            <span class="text-green-600">
+              ${{ total().toLocaleString("es-MX") }}
+            </span>
+          </div>
+        </div>
+        }
+
+        <!-- Botón Finalizar -->
+        <button
+          class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+          [disabled]="carrito().length === 0"
+        >
+          Finalizar Venta
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,131 @@
+<!-- Overlay para móviles -->
+@if (sidebarAbierto() && esMobile()) {
+<div
+  class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+  (click)="cerrarSidebarMobile()"
+></div>
+}
+
+<aside
+  [class]="obtenerClasesSidebar()"
+  class="bg-linear-to-b from-gray-900 to-gray-800 text-white h-screen flex flex-col fixed left-0 top-0 z-50 shadow-2xl overflow-hidden"
+>
+  <!-- Header del Sidebar -->
+  <div class="p-4 border-b border-gray-700 shrink-0">
+    @if (sidebarAbierto()) {
+    <!-- ✅ Versión expandida -->
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2 min-w-0 flex-1">
+        <span class="text-3xl shrink-0">🏪</span>
+        <div class="min-w-0 flex-1">
+          <h1 class="text-lg font-bold truncate">KashFlow POS</h1>
+          <p class="text-xs text-gray-400 truncate">Sistema de Ventas</p>
+        </div>
+      </div>
+
+      <button
+        (click)="alternarSidebar()"
+        class="p-2 hover:bg-gray-700 rounded-lg transition-colors shrink-0 ml-2"
+        title="Contraer"
+        aria-label="Contraer sidebar"
+      >
+        <span class="text-xl">◀</span>
+      </button>
+    </div>
+
+    <div
+      class="mt-3 flex items-center gap-2 bg-gray-800 rounded-lg p-2 min-w-0"
+    >
+      <div
+        class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+      >
+        {{ emailUsuario().charAt(0).toUpperCase() }}
+      </div>
+      <p class="text-xs text-gray-300 truncate flex-1 min-w-0">
+        {{ emailUsuario() }}
+      </p>
+    </div>
+    } @else {
+    <!-- ✅ Versión colapsada (botón centrado) -->
+    <div class="flex flex-col items-center gap-3">
+      <span class="text-3xl">🏪</span>
+
+      <button
+        (click)="alternarSidebar()"
+        class="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+        title="Expandir"
+        aria-label="Expandir sidebar"
+      >
+        <span class="text-xl">▶</span>
+      </button>
+    </div>
+    }
+  </div>
+
+  <!-- Navegación -->
+  <nav class="flex-1 overflow-y-auto overflow-x-hidden p-4">
+    <ul class="space-y-2">
+      @for (item of itemsMenu(); track item.ruta) {
+      <li>
+        <a
+          [routerLink]="item.ruta"
+          routerLinkActive="bg-blue-600 shadow-lg"
+          [routerLinkActiveOptions]="{ exact: false }"
+          (click)="manejarClickRuta()"
+          [class]="
+            sidebarAbierto()
+              ? 'flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-all relative group min-w-0'
+              : 'flex items-center justify-center px-4 py-3 rounded-lg hover:bg-gray-700 transition-all relative group'
+          "
+        >
+          <span class="text-2xl shrink-0">{{ item.icono }}</span>
+
+          @if (sidebarAbierto()) {
+          <span class="text-sm font-medium flex-1 truncate min-w-0">
+            {{ item.etiqueta }}
+          </span>
+
+          <!-- Badge -->
+          @if (item.badge && item.badge > 0) {
+          <span
+            class="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 shadow-md shrink-0"
+          >
+            {{ item.badge }}
+          </span>
+          } } @else {
+          <!-- Tooltip al pasar el mouse cuando está colapsado -->
+          <span
+            class="absolute left-full ml-2 px-3 py-2 bg-gray-700 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg"
+          >
+            {{ item.etiqueta }} @if (item.badge && item.badge > 0) {
+            <span class="ml-2 bg-red-500 rounded-full px-2 py-0.5 text-xs">
+              {{ item.badge }}
+            </span>
+            }
+          </span>
+          }
+        </a>
+      </li>
+      }
+    </ul>
+  </nav>
+
+  <!-- Footer del Sidebar -->
+  <div class="p-4 border-t border-gray-700 shrink-0">
+    <button
+      (click)="cerrarSesion()"
+      [class]="
+        sidebarAbierto()
+          ? 'w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-600 transition-all min-w-0'
+          : 'w-full flex items-center justify-center px-4 py-3 rounded-lg hover:bg-red-600 transition-all'
+      "
+    >
+      <span class="text-2xl shrink-0">🚪</span>
+      @if (sidebarAbierto()) {
+      <span class="text-sm font-medium truncate flex-1 min-w-0 text-left">
+        Cerrar Sesión
+      </span>
+      }
+    </button>
+  </div>
+</aside>

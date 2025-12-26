@@ -2,6 +2,7 @@
 /dist
 /tmp
 /out-tsc
+/.angular/cache
 
 # Node
 /node_modules
@@ -11,15 +12,24 @@ yarn-error.log
 # IDEs
 .vscode/
 .idea/
+*.swp
+*.swo
 
-# Environment
+# Environment files (IMPORTANTE)
 .env
 .env.local
 .env.*.local
-
-# Angular
-.angular/cache
+/src/environments/environment.ts
+/src/environments/environment.development.ts
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Testing
+/coverage
+
+# API (si tienes backend local)
+/api/.env
+/api/node_modules
+/api/dist

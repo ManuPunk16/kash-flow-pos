@@ -1,0 +1,17 @@
+<div class="flex h-screen overflow-hidden bg-gray-50">
+  <!-- Sidebar -->
+  <app-sidebar [(sidebarAbierto)]="sidebarAbierto" />
+
+  <!-- Contenido Principal -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <!-- Header Móvil (solo visible en pantallas pequeñas) -->
+    <app-mobile-header (onToggleMenu)="abrirSidebar()" />
+
+    <!-- Main Content -->
+    <main [class]="obtenerClasesMain()">
+      <div class="min-h-screen">
+        <router-outlet />
+      </div>
+    </main>
+  </div>
+</div>

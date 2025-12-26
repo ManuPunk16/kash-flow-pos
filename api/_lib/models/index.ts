@@ -1,8 +1,8 @@
-export * from './Usuario.js';
-export * from './Producto.js';
-export * from './Cliente.js';
-export * from './Venta.js';
-export * from './AbonoCliente.js';
-export * from './Proveedor.js';
-export * from './PagoProveedor.js';
-export * from './Egreso.js';
+export { Usuario, IUsuario } from './Usuario.js';
+export { Producto, IProducto } from './Producto.js';
+export { Cliente, ICliente } from './Cliente.js';
+export { Venta, IVenta, IItemVenta } from './Venta.js';
+export { AbonoCliente, IAbonoCliente } from './AbonoCliente.js';
+export { Proveedor, IProveedor } from './Proveedor.js';
+export { PagoProveedor, IPagoProveedor } from './PagoProveedor.js';
+export { default as Egreso, IEgreso } from './Egreso.js';

@@ -127,4 +127,7 @@ EgresoSchema.index({ categoria: 1 });
 EgresoSchema.index({ aprobado: 1 });
 EgresoSchema.index({ usuarioId: 1 });
 
-export default mongoose.model<IEgreso>('Egreso', EgresoSchema);
+// ✅ CORRECCIÓN: Exportar como default y named
+const Egreso = mongoose.model<IEgreso>('Egreso', EgresoSchema);
+export default Egreso;
+export { Egreso };

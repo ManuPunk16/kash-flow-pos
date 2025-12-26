@@ -5,7 +5,7 @@ import {
   esquemaCrearEgreso,
   esquemaActualizarEgreso,
 } from '../validacion/schemas.js';
-import { Egreso, Usuario } from '../models/index.js';
+import { Egreso, Usuario, IEgreso } from '../models/index.js'; // ✅ CAMBIO: Agregar IEgreso
 import { conectarMongoDB } from '../config/database.js';
 import { v4 as uuid } from 'uuid';
 
@@ -83,7 +83,11 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
             .lean()
             .maxTimeMS(5000);
 
-          const totalMonto = egresos.reduce((sum, e) => sum + e.monto, 0);
+          // ✅ CORRECCIÓN: Tipar explícitamente el reduce
+          const totalMonto = egresos.reduce(
+            (sum: number, e: any) => sum + (e.monto as number),
+            0
+          );
 
           res.status(200).json({
             exito: true,

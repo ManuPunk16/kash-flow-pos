@@ -13,6 +13,7 @@ import proveedoresHandler from '../../_lib/handlers/proveedores.js';
 import pagosProveedoresHandler from '../../_lib/handlers/pagos-proveedores.js';
 import reportesHandler from '../../_lib/handlers/reportes.js';
 import categoriasHandler from '../../_lib/handlers/categorias.js';
+import egresosHandler from '../../_lib/handlers/egresos.js'; // ✅ NUEVO
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
@@ -105,6 +106,8 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       return await reportesHandler(req, res);
     if (pathname.startsWith('/api/categorias'))
       return await categoriasHandler(req, res);
+    if (pathname.startsWith('/api/egresos'))
+      return await egresosHandler(req, res);
     if (pathname.startsWith('/api/auth')) return await authHandler(req, res);
 
     // 404

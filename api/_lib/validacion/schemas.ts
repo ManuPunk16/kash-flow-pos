@@ -190,3 +190,63 @@ export const esquemaCrearPagoProveedor = Joi.object({
   referenciaPago: Joi.string().optional().max(100),
   observaciones: Joi.string().optional().max(500),
 }).unknown(false);
+
+// =====================
+// EGRESOS
+// =====================
+
+// ✅ NUEVO: Esquema para crear egreso
+export const esquemaCrearEgreso = Joi.object({
+  concepto: Joi.string().required().trim().min(3).max(200).messages({
+    'string.empty': 'El concepto es obligatorio',
+    'string.min': 'El concepto debe tener al menos 3 caracteres',
+  }),
+  descripcion: Joi.string().trim().allow('').max(500),
+  monto: Joi.number().required().min(1).messages({
+    'number.base': 'El monto debe ser un número',
+    'number.min': 'El monto debe ser mayor a 0',
+  }),
+  categoria: Joi.string()
+    .required()
+    .valid(
+      'servicios',
+      'nomina',
+      'insumos',
+      'mantenimiento',
+      'transporte',
+      'otros'
+    )
+    .messages({
+      'any.only': 'Categoría inválida',
+    }),
+  metodoPago: Joi.string()
+    .required()
+    .valid('efectivo', 'transferencia', 'tarjeta')
+    .messages({
+      'any.only': 'Método de pago inválido',
+    }),
+  referenciaPago: Joi.string().trim().allow('').max(100),
+  beneficiario: Joi.string().trim().allow('').max(200),
+  observaciones: Joi.string().trim().allow('').max(500),
+  fechaEgreso: Joi.date().iso().optional(),
+});
+
+// ✅ NUEVO: Esquema para actualizar egreso
+export const esquemaActualizarEgreso = Joi.object({
+  concepto: Joi.string().trim().min(3).max(200),
+  descripcion: Joi.string().trim().allow('').max(500),
+  monto: Joi.number().min(1),
+  categoria: Joi.string().valid(
+    'servicios',
+    'nomina',
+    'insumos',
+    'mantenimiento',
+    'transporte',
+    'otros'
+  ),
+  metodoPago: Joi.string().valid('efectivo', 'transferencia', 'tarjeta'),
+  referenciaPago: Joi.string().trim().allow('').max(100),
+  beneficiario: Joi.string().trim().allow('').max(200),
+  observaciones: Joi.string().trim().allow('').max(500),
+  aprobado: Joi.boolean(),
+}).min(1);

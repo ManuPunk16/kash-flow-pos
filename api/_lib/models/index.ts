@@ -5,3 +5,4 @@ export * from './Venta.js';
 export * from './AbonoCliente.js';
 export * from './Proveedor.js';
 export * from './PagoProveedor.js';
+export * from './Egreso.js';

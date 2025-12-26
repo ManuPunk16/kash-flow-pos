@@ -55,7 +55,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
 
     switch (req.method) {
       case 'GET':
-        // ✅ GET /api/productos/buscar?q=texto - NUEVO
+        // ✅ GET /api/productos/buscar?q=texto
         if (rutaProducto.includes('/buscar')) {
           const { searchParams } = new URL(
             req.url || '',
@@ -66,36 +66,47 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           if (!query || query.length < 2) {
             res.status(400).json({
               exito: false,
-              error: 'Query muy corto',
-              mensaje: 'Escribe al menos 2 caracteres para buscar',
+              error: 'Query de búsqueda inválida',
+              mensaje: 'Debe proporcionar al menos 2 caracteres',
             });
             return;
           }
 
+          // ✅ POPULATE en búsqueda
           const productos = await Producto.find({
             activo: true,
             $or: [
               { nombre: { $regex: query, $options: 'i' } },
-              { codigoBarras: { $regex: query, $options: 'i' } }, // ✅ CAMBIO
+              { codigoBarras: { $regex: query, $options: 'i' } },
               { categoria: { $regex: query, $options: 'i' } },
               { descripcion: { $regex: query, $options: 'i' } },
             ],
           })
-            .select('nombre codigoBarras precioVenta stock categoria') // ✅ CAMBIO
+            .populate('proveedorId', 'nombre contacto email telefono nit') // ✅ POPULATE
+            .select(
+              'nombre codigoBarras precioVenta stock categoria proveedorId'
+            )
             .limit(20)
             .lean()
             .maxTimeMS(3000);
 
+          // ✅ Transformar respuesta
+          const productosFormateados = productos.map((p: any) => ({
+            ...p,
+            proveedor: p.proveedorId, // Mongoose reemplaza proveedorId con el objeto
+            proveedorId: p.proveedorId?._id?.toString() || null, // Mantener el ID
+          }));
+
           res.status(200).json({
             exito: true,
-            datos: productos,
-            cantidad: productos.length,
+            datos: productosFormateados,
+            cantidad: productosFormateados.length,
             query,
           });
           return;
         }
 
-        // ✅ GET /api/productos/validar-stock/:id?cantidad=X - NUEVO
+        // ✅ GET /api/productos/validar-stock/:id?cantidad=X
         if (rutaProducto.includes('/validar-stock/')) {
           const productoId = rutaProducto
             .split('/validar-stock/')[1]
@@ -109,7 +120,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           if (!productoId || !/^[0-9a-fA-F]{24}$/.test(productoId)) {
             res.status(400).json({
               exito: false,
-              error: 'ID inválido',
+              error: 'ID de producto inválido',
             });
             return;
           }
@@ -145,15 +156,17 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        // GET /api/productos - Obtener todos CON PAGINACIÓN
+        // ✅ GET /api/productos - Obtener todos CON POPULATE
         if (rutaProducto === '/' || rutaProducto === '') {
-          console.log('📦 Consultando productos...');
+          console.log('📦 Consultando productos CON POPULATE...');
           const inicio = Date.now();
 
           const { pagina, limite, skip } = obtenerOpcionesPaginacion(req);
 
-          const [productos, total] = await Promise.all([
+          // ✅ POPULATE en listado principal
+          const [productosRaw, total] = await Promise.all([
             Producto.find({ activo: true })
+              .populate('proveedorId', 'nombre contacto email telefono nit') // ✅ POPULATE
               .select('-__v')
               .skip(skip)
               .limit(limite)
@@ -162,9 +175,16 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
             Producto.countDocuments({ activo: true }),
           ]);
 
+          // ✅ Transformar respuesta para mantener compatibilidad
+          const productos = productosRaw.map((p: any) => ({
+            ...p,
+            proveedor: p.proveedorId, // Información completa del proveedor
+            proveedorId: p.proveedorId?._id?.toString() || null, // Mantener ID
+          }));
+
           const duracion = Date.now() - inicio;
           console.log(
-            `✅ Productos obtenidos: ${productos.length}/${total} en ${duracion}ms`
+            `✅ Productos obtenidos CON POPULATE: ${productos.length}/${total} en ${duracion}ms`
           );
 
           res
@@ -173,22 +193,34 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        // GET /api/productos/[id] - Obtener por ID
+        // ✅ GET /api/productos/[id] - Obtener por ID CON POPULATE
         const productoId = rutaProducto.replace('/', '');
 
         if (productoId && /^[0-9a-fA-F]{24}$/.test(productoId)) {
-          const producto = await Producto.findById(productoId)
+          const productoRaw = await Producto.findById(productoId)
+            .populate(
+              'proveedorId',
+              'nombre contacto email telefono nit direccion'
+            ) // ✅ POPULATE completo
             .select('-__v')
             .lean()
             .maxTimeMS(3000);
 
-          if (!producto) {
+          if (!productoRaw) {
             res.status(404).json({
               exito: false,
               error: 'Producto no encontrado',
             });
             return;
           }
+
+          // ✅ Transformar respuesta
+          const producto: any = {
+            ...productoRaw,
+            proveedor: (productoRaw as any).proveedorId,
+            proveedorId:
+              (productoRaw as any).proveedorId?._id?.toString() || null,
+          };
 
           res.status(200).json({
             exito: true,
@@ -206,7 +238,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         return;
 
       case 'POST':
-        // ✅ POST /api/productos/registro-rapido - NUEVO
+        // ✅ POST /api/productos/registro-rapido
         if (rutaProducto.includes('/registro-rapido')) {
           const { error, value } = esquemaRegistroRapidoProducto.validate(
             req.body,
@@ -227,56 +259,75 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
 
           const { codigoBarras, cantidad = 1 } = value;
 
-          // Buscar producto existente
+          // Buscar producto existente CON POPULATE
           let producto = await Producto.findOne({
             codigoBarras,
             activo: true,
-          });
+          })
+            .populate('proveedorId', 'nombre')
+            .lean();
 
           if (producto) {
-            // Si existe, incrementar stock
-            producto.stock += cantidad;
-            producto.fechaActualizacion = new Date();
-            await producto.save();
+            // Actualizar stock
+            const productoActualizado = await Producto.findByIdAndUpdate(
+              producto._id,
+              { $inc: { stock: cantidad } },
+              { new: true }
+            )
+              .populate('proveedorId', 'nombre contacto email telefono nit')
+              .lean();
 
             res.status(200).json({
               exito: true,
-              mensaje: `Stock actualizado: +${cantidad} unidades`,
-              dato: producto,
-              esNuevo: false,
+              mensaje: `✅ Stock actualizado: +${cantidad} unidades`,
+              dato: {
+                ...(productoActualizado as any),
+                proveedor: (productoActualizado as any).proveedorId,
+                proveedorId:
+                  (productoActualizado as any).proveedorId?._id?.toString() ||
+                  null,
+              },
             });
           } else {
-            // Si NO existe, crear nuevo con datos mínimos
-            const nuevoProducto = new Producto({
+            // Crear producto incompleto
+            const nuevoProducto = await ProductosService.crear({
+              nombre: `Producto ${codigoBarras}`,
               codigoBarras,
-              nombre: `Producto ${codigoBarras}`, // Temporal
-              descripcion: 'Pendiente de completar',
-              costoUnitario: 0,
+              descripcion: 'Pendiente de completar datos',
               precioVenta: 0,
+              costoUnitario: 0,
               stock: cantidad,
               stockMinimo: 5,
-              categoria: 'Sin categoría',
-              activo: true,
               esConsignacion: false,
-              pendienteCompletarDatos: true, // ✅ FLAG
+              categoria: 'otros',
+              activo: true,
+              pendienteCompletarDatos: true, // ✅ Marcar para completar
               fechaCreacion: new Date(),
               fechaActualizacion: new Date(),
             });
 
-            await nuevoProducto.save();
+            const productoConProveedor = await Producto.findById(
+              nuevoProducto._id
+            )
+              .populate('proveedorId', 'nombre contacto email telefono nit')
+              .lean();
 
             res.status(201).json({
               exito: true,
-              mensaje: '⚠️ Producto creado. Completar datos manualmente',
-              dato: nuevoProducto,
-              esNuevo: true,
-              advertencia: 'Faltan datos: nombre, precio, costo',
+              mensaje: '⚠️ Producto creado. Completa los datos pendientes',
+              dato: {
+                ...(productoConProveedor as any),
+                proveedor: (productoConProveedor as any).proveedorId,
+                proveedorId:
+                  (productoConProveedor as any).proveedorId?._id?.toString() ||
+                  null,
+              },
             });
           }
           return;
         }
 
-        // POST /api/productos - Crear producto normal
+        // ✅ POST /api/productos - Crear producto normal
         const { error, value } = esquemaCrearProducto.validate(req.body, {
           abortEarly: false,
           stripUnknown: true,
@@ -301,10 +352,20 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           fechaActualizacion: new Date(),
         });
 
+        // ✅ Obtener producto con populate
+        const productoCreado = await Producto.findById(nuevoProducto._id)
+          .populate('proveedorId', 'nombre contacto email telefono nit')
+          .lean();
+
         res.status(201).json({
           exito: true,
           mensaje: 'Producto creado exitosamente ✅',
-          dato: nuevoProducto,
+          dato: {
+            ...(productoCreado as any),
+            proveedor: (productoCreado as any).proveedorId,
+            proveedorId:
+              (productoCreado as any).proveedorId?._id?.toString() || null,
+          },
         });
         return;
 
@@ -352,10 +413,23 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
+        // ✅ Obtener producto actualizado con populate
+        const productoConProveedor = await Producto.findById(
+          productoActualizado._id
+        )
+          .populate('proveedorId', 'nombre contacto email telefono nit')
+          .lean();
+
         res.status(200).json({
           exito: true,
           mensaje: 'Producto actualizado exitosamente ✅',
-          dato: productoActualizado,
+          dato: {
+            ...(productoConProveedor as any),
+            proveedor: (productoConProveedor as any).proveedorId,
+            proveedorId:
+              (productoConProveedor as any).proveedorId?._id?.toString() ||
+              null,
+          },
         });
         return;
 
@@ -377,7 +451,10 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
             fechaActualizacion: new Date(),
           },
           { new: true }
-        ).maxTimeMS(3000);
+        )
+          .populate('proveedorId', 'nombre')
+          .lean()
+          .maxTimeMS(3000);
 
         if (!productoDesactivado) {
           res.status(404).json({
@@ -390,7 +467,12 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         res.status(200).json({
           exito: true,
           mensaje: 'Producto desactivado exitosamente ✅',
-          dato: productoDesactivado,
+          dato: {
+            ...(productoDesactivado as any),
+            proveedor: (productoDesactivado as any).proveedorId,
+            proveedorId:
+              (productoDesactivado as any).proveedorId?._id?.toString() || null,
+          },
         });
         return;
 

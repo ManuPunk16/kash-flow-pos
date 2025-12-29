@@ -1,0 +1,9 @@
+:host {
+  display: block;
+}
+
+/* Hover effect en toda la tarjeta */
+:host:hover {
+  transform: translateY(-4px);
+  transition: transform 0.2s ease-in-out;
+}

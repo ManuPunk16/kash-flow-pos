@@ -1,4 +1,310 @@
-<div class="p-6">
-  <h1 class="text-2xl font-bold text-gray-800 mb-4">🏢 Proveedores</h1>
-  <p class="text-gray-600">Gestión de proveedores en desarrollo...</p>
+<div class="min-h-screen bg-gray-50 p-4 md:p-6">
+  <!-- Header -->
+  <header class="mb-6">
+    <div
+      class="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+    >
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <span>🏢</span>
+          <span>Proveedores</span>
+        </h1>
+        <p class="text-gray-600 mt-1">
+          Gestiona tus proveedores y cuentas por pagar
+        </p>
+      </div>
+
+      <button
+        (click)="abrirModalCrear()"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition-all hover:shadow-lg flex items-center gap-2 justify-center"
+      >
+        <span class="text-xl">➕</span>
+        <span>Nuevo Proveedor</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Tarjetas de Métricas -->
+  <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <!-- Total Proveedores -->
+    <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-blue-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm font-medium">Total Proveedores</p>
+          <p class="text-3xl font-bold text-gray-900 mt-1">
+            {{ cantidadProveedores() }}
+          </p>
+        </div>
+        <div class="bg-blue-100 p-3 rounded-full">
+          <span class="text-3xl">📦</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Proveedores Activos -->
+    <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-green-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm font-medium">Activos</p>
+          <p class="text-3xl font-bold text-green-600 mt-1">
+            {{ cantidadActivos() }}
+          </p>
+        </div>
+        <div class="bg-green-100 p-3 rounded-full">
+          <span class="text-3xl">✅</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Proveedores con Deuda -->
+    <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-yellow-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm font-medium">Con Deuda</p>
+          <p class="text-3xl font-bold text-yellow-600 mt-1">
+            {{ proveedoresConDeuda().length }}
+          </p>
+        </div>
+        <div class="bg-yellow-100 p-3 rounded-full">
+          <span class="text-3xl">⚠️</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total Deuda -->
+    <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-red-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm font-medium">Total Deuda</p>
+          <p class="text-3xl font-bold text-red-600 mt-1">
+            ${{ totalDeuda().toLocaleString('es-MX') }}
+          </p>
+        </div>
+        <div class="bg-red-100 p-3 rounded-full">
+          <span class="text-3xl">💰</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Barra de Búsqueda y Controles -->
+  <section class="bg-white rounded-lg shadow-md p-4 mb-6">
+    <div class="flex flex-col md:flex-row gap-4 items-center">
+      <!-- Búsqueda -->
+      <div class="flex-1 w-full">
+        <div class="relative">
+          <input
+            type="text"
+            placeholder="Buscar por nombre, NIT, contacto..."
+            [value]="busqueda()"
+            (input)="actualizarBusqueda($event)"
+            class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <span class="absolute left-3 top-3.5 text-gray-400 text-xl">🔍</span>
+        </div>
+      </div>
+
+      <!-- Cambiar Vista -->
+      <div class="flex gap-2">
+        <button
+          (click)="cambiarVista('grid')"
+          [class.bg-blue-600]="vista() === 'grid'"
+          [class.text-white]="vista() === 'grid'"
+          [class.bg-gray-200]="vista() !== 'grid'"
+          [class.text-gray-700]="vista() !== 'grid'"
+          class="px-4 py-2 rounded-lg font-semibold transition-colors"
+        >
+          🔲 Grid
+        </button>
+        <button
+          (click)="cambiarVista('tabla')"
+          [class.bg-blue-600]="vista() === 'tabla'"
+          [class.text-white]="vista() === 'tabla'"
+          [class.bg-gray-200]="vista() !== 'tabla'"
+          [class.text-gray-700]="vista() !== 'tabla'"
+          class="px-4 py-2 rounded-lg font-semibold transition-colors"
+        >
+          📋 Tabla
+        </button>
+      </div>
+
+      <!-- Recargar -->
+      <button
+        (click)="cargarProveedores()"
+        [disabled]="cargando()"
+        class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        🔄 Recargar
+      </button>
+    </div>
+  </section>
+
+  <!-- Estados de Carga/Error -->
+  @if (cargando()) {
+  <div class="flex justify-center items-center py-12">
+    <div class="text-center">
+      <div class="animate-spin text-6xl mb-4">⏳</div>
+      <p class="text-gray-600 font-medium">Cargando proveedores...</p>
+    </div>
+  </div>
+  } @else if (error()) {
+  <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg">
+    <div class="flex items-start gap-3">
+      <span class="text-3xl">❌</span>
+      <div>
+        <h3 class="font-bold text-red-800 mb-1">Error al cargar datos</h3>
+        <p class="text-red-600">{{ error() }}</p>
+        <button
+          (click)="cargarProveedores()"
+          class="mt-3 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+        >
+          Reintentar
+        </button>
+      </div>
+    </div>
+  </div>
+  } @else if (proveedoresFiltrados().length === 0) {
+  <div
+    class="bg-yellow-50 border-l-4 border-yellow-500 p-8 rounded-lg text-center"
+  >
+    <span class="text-6xl mb-4 block">📭</span>
+    <h3 class="font-bold text-yellow-800 text-xl mb-2">
+      No se encontraron proveedores
+    </h3>
+    <p class="text-yellow-700 mb-4">
+      @if (busqueda()) { No hay resultados para "{{ busqueda() }}" } @else { Aún
+      no has agregado proveedores }
+    </p>
+    <button
+      (click)="abrirModalCrear()"
+      class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+    >
+      ➕ Agregar Primer Proveedor
+    </button>
+  </div>
+  } @else {
+  <!-- Vista Grid -->
+  @if (vista() === 'grid') {
+  <section
+    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+  >
+    @for (proveedor of proveedoresFiltrados(); track proveedor._id) {
+    <app-tarjeta-proveedor
+      [proveedor]="proveedor"
+      (onEditar)="abrirModalEditar($event)"
+      (onEliminar)="eliminarProveedor($event)"
+    />
+    }
+  </section>
+  }
+
+  <!-- Vista Tabla -->
+  @if (vista() === 'tabla') {
+  <div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-100 border-b-2 border-gray-200">
+          <tr>
+            <th class="px-6 py-4 text-left text-sm font-bold text-gray-700">
+              Proveedor
+            </th>
+            <th class="px-6 py-4 text-left text-sm font-bold text-gray-700">
+              Contacto
+            </th>
+            <th class="px-6 py-4 text-left text-sm font-bold text-gray-700">
+              NIT
+            </th>
+            <th class="px-6 py-4 text-left text-sm font-bold text-gray-700">
+              Saldo Pendiente
+            </th>
+            <th class="px-6 py-4 text-left text-sm font-bold text-gray-700">
+              Productos
+            </th>
+            <th class="px-6 py-4 text-center text-sm font-bold text-gray-700">
+              Acciones
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          @for (proveedor of proveedoresFiltrados(); track proveedor._id) {
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-6 py-4">
+              <div>
+                <p class="font-semibold text-gray-900">
+                  {{ proveedor.nombre }}
+                </p>
+                @if (proveedor.email) {
+                <p class="text-sm text-gray-500">{{ proveedor.email }}</p>
+                }
+              </div>
+            </td>
+            <td class="px-6 py-4">
+              <div class="text-sm">
+                @if (proveedor.contacto) {
+                <p class="text-gray-900">{{ proveedor.contacto }}</p>
+                } @if (proveedor.telefono) {
+                <p class="text-gray-500">📞 {{ proveedor.telefono }}</p>
+                }
+              </div>
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-700">
+              {{ proveedor.nit || 'N/A' }}
+            </td>
+            <td class="px-6 py-4">
+              @if (proveedor.saldoPendiente > 0) {
+              <span
+                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800"
+              >
+                ${{ proveedor.saldoPendiente.toLocaleString('es-MX') }}
+              </span>
+              } @else {
+              <span
+                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800"
+              >
+                Al día
+              </span>
+              }
+            </td>
+            <td class="px-6 py-4 text-center">
+              <span
+                class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-800 font-bold"
+              >
+                {{ proveedor.productosCargados }}
+              </span>
+            </td>
+            <td class="px-6 py-4">
+              <div class="flex items-center justify-center gap-2">
+                <button
+                  (click)="abrirModalEditar(proveedor)"
+                  class="bg-blue-100 hover:bg-blue-200 text-blue-700 p-2 rounded-lg transition-colors"
+                  title="Editar"
+                >
+                  ✏️
+                </button>
+                <button
+                  (click)="eliminarProveedor(proveedor._id)"
+                  class="bg-red-100 hover:bg-red-200 text-red-700 p-2 rounded-lg transition-colors"
+                  title="Eliminar"
+                >
+                  🗑️
+                </button>
+              </div>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+  } }
 </div>
+
+<!-- Modal de Crear/Editar -->
+@if (mostrarModal()) {
+<app-modal-proveedor
+  [proveedor]="proveedorSeleccionado()"
+  [modoEdicion]="modoEdicion()"
+  (onCerrar)="cerrarModal()"
+  (onGuardar)="guardarProveedor($event)"
+/>
+}

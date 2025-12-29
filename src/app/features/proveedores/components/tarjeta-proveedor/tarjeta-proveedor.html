@@ -1,0 +1,102 @@
+<div
+  class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all border-l-4 overflow-hidden"
+  [class]="colorBorde()"
+>
+  <!-- Header -->
+  <div class="p-5 border-b border-gray-100">
+    <div class="flex items-start justify-between mb-3">
+      <h3 class="text-lg font-bold text-gray-900 flex-1">
+        {{ proveedor().nombre }}
+      </h3>
+      @if (tieneDeuda()) {
+      <span class="text-2xl" title="Tiene deuda pendiente">⚠️</span>
+      } @else {
+      <span class="text-2xl" title="Al día">✅</span>
+      }
+    </div>
+
+    @if (proveedor().contacto) {
+    <p class="text-sm text-gray-600 mb-1">
+      <span class="font-medium">👤 Contacto:</span>
+      {{ proveedor().contacto }}
+    </p>
+    } @if (proveedor().telefono) {
+    <p class="text-sm text-gray-600 mb-1">
+      <span class="font-medium">📞</span>
+      {{ proveedor().telefono }}
+    </p>
+    } @if (proveedor().email) {
+    <p class="text-sm text-gray-600 mb-1">
+      <span class="font-medium">📧</span>
+      {{ proveedor().email }}
+    </p>
+    } @if (proveedor().nit) {
+    <p class="text-sm text-gray-600">
+      <span class="font-medium">🆔 NIT:</span>
+      {{ proveedor().nit }}
+    </p>
+    }
+  </div>
+
+  <!-- Métricas -->
+  <div class="p-5 bg-gray-50">
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <!-- Saldo Pendiente -->
+      <div class="text-center">
+        <p class="text-xs text-gray-600 mb-1">Saldo Pendiente</p>
+        @if (tieneDeuda()) {
+        <p class="text-xl font-bold text-red-600">
+          ${{ proveedor().saldoPendiente.toLocaleString('es-MX') }}
+        </p>
+        } @else {
+        <p class="text-xl font-bold text-green-600">$0</p>
+        }
+      </div>
+
+      <!-- Productos Cargados -->
+      <div class="text-center">
+        <p class="text-xs text-gray-600 mb-1">Productos</p>
+        <p class="text-xl font-bold text-blue-600">
+          {{ proveedor().productosCargados }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Término de Pago -->
+    <div class="text-center mb-3">
+      <p class="text-xs text-gray-600 mb-1">Término de Pago</p>
+      <p class="text-sm font-semibold text-gray-800">
+        {{ proveedor().terminoPago }} días
+      </p>
+    </div>
+
+    @if (proveedor().fechaUltimoAbono) {
+    <div class="text-center">
+      <p class="text-xs text-gray-600 mb-1">Último Abono</p>
+      <p class="text-sm text-gray-700">
+        {{ proveedor().fechaUltimoAbono | date: 'dd/MM/yyyy' }}
+      </p>
+    </div>
+    }
+  </div>
+
+  <!-- Acciones -->
+  <div class="p-4 bg-white border-t border-gray-100">
+    <div class="flex gap-2">
+      <button
+        (click)="editar()"
+        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+      >
+        <span>✏️</span>
+        <span>Editar</span>
+      </button>
+      <button
+        (click)="eliminar()"
+        class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+        title="Eliminar"
+      >
+        🗑️
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,8 @@
+:host {
+  display: block;
+}
+
+:host:hover {
+  transform: translateY(-4px);
+  transition: transform 0.2s ease-in-out;
+}

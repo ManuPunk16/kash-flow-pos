@@ -2,16 +2,34 @@
   display: block;
 }
 
-/* Animaciones suaves */
-button {
-  transition: all 0.2s ease-in-out;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
-button:active {
-  transform: scale(0.98);
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
-/* Scroll suave en tabla */
+.fixed {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.bg-white {
+  animation: slideUp 0.3s ease-out;
+}
+
 .overflow-x-auto {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e0 #f7fafc;

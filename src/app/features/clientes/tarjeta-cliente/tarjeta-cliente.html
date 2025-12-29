@@ -1,0 +1,136 @@
+<div
+  class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all border-l-4 overflow-hidden"
+  [class]="colorBorde()"
+>
+  <!-- Header -->
+  <div class="p-5 border-b border-gray-100">
+    <div class="flex items-start justify-between mb-2">
+      <div class="flex-1">
+        <h3 class="text-lg font-bold text-gray-900">
+          {{ cliente().nombre }} {{ cliente().apellido }}
+        </h3>
+        @if (cliente().identificacion) {
+        <p class="text-sm text-gray-500 mt-1">
+          CC: {{ cliente().identificacion }}
+        </p>
+        }
+      </div>
+      <span
+        class="px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1"
+        [class]="estadoCliente().clases"
+      >
+        <span>{{ estadoCliente().emoji }}</span>
+        <span>{{ estadoCliente().texto }}</span>
+      </span>
+    </div>
+
+    <!-- Contacto -->
+    <div class="flex flex-col gap-1 mt-3">
+      @if (cliente().telefono) {
+      <p class="text-sm text-gray-600 flex items-center gap-2">
+        <span>📞</span>
+        <span>{{ cliente().telefono }}</span>
+      </p>
+      } @if (cliente().email) {
+      <p class="text-sm text-gray-600 flex items-center gap-2 truncate">
+        <span>✉️</span>
+        <span class="truncate">{{ cliente().email }}</span>
+      </p>
+      }
+    </div>
+  </div>
+
+  <!-- Información Financiera -->
+  <div class="p-5 bg-gray-50">
+    <div class="grid grid-cols-2 gap-4">
+      <!-- Saldo Actual -->
+      <div>
+        <p class="text-xs text-gray-500 mb-1">Saldo Actual</p>
+        @if (cliente().saldoActual > 0) {
+        <p class="text-xl font-bold text-red-600">
+          ${{ cliente().saldoActual.toLocaleString('es-MX') }}
+        </p>
+        } @else {
+        <p class="text-xl font-bold text-green-600">$0</p>
+        }
+      </div>
+
+      <!-- Saldo Histórico -->
+      <div>
+        <p class="text-xs text-gray-500 mb-1">Total Histórico</p>
+        <p class="text-xl font-bold text-gray-700">
+          ${{ cliente().saldoHistorico.toLocaleString('es-MX') }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Última Compra -->
+    <div class="mt-4 pt-4 border-t border-gray-200">
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-gray-600">Última compra:</span>
+        @if (cliente().ultimaCompra) {
+        <span class="font-semibold text-gray-900">
+          {{ cliente().ultimaCompra | date: 'dd/MM/yyyy' }}
+        </span>
+        } @else {
+        <span class="text-gray-400 italic">Sin compras</span>
+        }
+      </div>
+
+      @if (cliente().saldoActual > 0) {
+      <div class="flex items-center justify-between text-sm mt-2">
+        <span class="text-gray-600">Sin pagar:</span>
+        <span class="font-semibold text-orange-600">
+          {{ diasSinPagar() }}
+        </span>
+      </div>
+      }
+    </div>
+  </div>
+
+  <!-- Acciones -->
+  <div class="p-4 bg-white border-t border-gray-100">
+    <div class="grid grid-cols-2 gap-2">
+      <button
+        (click)="verDetalle()"
+        class="bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+      >
+        <span>👁️</span>
+        <span class="text-sm">Ver Detalle</span>
+      </button>
+
+      @if (cliente().saldoActual > 0) {
+      <button
+        (click)="registrarAbono()"
+        class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+      >
+        <span>💵</span>
+        <span class="text-sm">Abono</span>
+      </button>
+      } @else {
+      <button
+        (click)="editar()"
+        class="bg-blue-100 hover:bg-blue-200 text-blue-700 font-semibold py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+      >
+        <span>✏️</span>
+        <span class="text-sm">Editar</span>
+      </button>
+      }
+    </div>
+
+    <div class="grid grid-cols-2 gap-2 mt-2">
+      <button
+        (click)="editar()"
+        class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-3 rounded-lg transition-colors text-sm"
+      >
+        Editar
+      </button>
+      <button
+        (click)="eliminar()"
+        class="bg-red-100 hover:bg-red-200 text-red-700 font-semibold py-2 px-3 rounded-lg transition-colors text-sm"
+      >
+        Eliminar
+      </button>
+    </div>
+  </div>
+</div>

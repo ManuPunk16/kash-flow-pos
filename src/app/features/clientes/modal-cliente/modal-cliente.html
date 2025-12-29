@@ -1,0 +1,156 @@
+<!-- Overlay -->
+<div
+  class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+  (click)="cerrar()"
+>
+  <!-- Modal -->
+  <div
+    class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+    (click)="$event.stopPropagation()"
+  >
+    <!-- Header -->
+    <div
+      class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10"
+    >
+      <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <span>👤</span>
+        <span>{{ titulo() }}</span>
+      </h2>
+      <button
+        (click)="cerrar()"
+        class="text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        <span class="text-3xl">×</span>
+      </button>
+    </div>
+
+    <!-- Formulario -->
+    <form (ngSubmit)="guardar()" class="p-6 space-y-4">
+      <!-- Nombre y Apellido -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            Nombre <span class="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            [value]="nombre()"
+            (input)="nombre.set($any($event.target).value)"
+            placeholder="Juan"
+            required
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          @if (nombre().trim().length > 0 && nombre().trim().length < 2) {
+          <p class="text-xs text-red-500 mt-1">Mínimo 2 caracteres</p>
+          }
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            Apellido <span class="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            [value]="apellido()"
+            (input)="apellido.set($any($event.target).value)"
+            placeholder="Pérez"
+            required
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          @if (apellido().trim().length > 0 && apellido().trim().length < 2) {
+          <p class="text-xs text-red-500 mt-1">Mínimo 2 caracteres</p>
+          }
+        </div>
+      </div>
+
+      <!-- Identificación -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">
+          Cédula/Identificación <span class="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          [value]="identificacion()"
+          (input)="identificacion.set($any($event.target).value)"
+          placeholder="1234567890"
+          required
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        @if (identificacion().trim().length > 0 &&
+        identificacion().trim().length < 6) {
+        <p class="text-xs text-red-500 mt-1">Mínimo 6 caracteres</p>
+        }
+      </div>
+
+      <!-- Email y Teléfono -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            Email (opcional)
+          </label>
+          <input
+            type="email"
+            [value]="email()"
+            (input)="email.set($any($event.target).value)"
+            placeholder="cliente@example.com"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            Teléfono (opcional)
+          </label>
+          <input
+            type="tel"
+            [value]="telefono()"
+            (input)="telefono.set($any($event.target).value)"
+            placeholder="+57 300 123 4567"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+      </div>
+
+      <!-- Dirección -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">
+          Dirección (opcional)
+        </label>
+        <textarea
+          [value]="direccion()"
+          (input)="direccion.set($any($event.target).value)"
+          placeholder="Calle 123 #45-67, Barrio Centro"
+          rows="2"
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+        ></textarea>
+      </div>
+
+      <!-- Campos Obligatorios -->
+      <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+        <p class="text-sm text-blue-700">
+          <span class="font-semibold">Nota:</span> Los campos marcados con
+          <span class="text-red-500">*</span> son obligatorios
+        </p>
+      </div>
+
+      <!-- Acciones -->
+      <div class="flex gap-3 pt-4">
+        <button
+          type="button"
+          (click)="cerrar()"
+          class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          [disabled]="!formularioValido()"
+          class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+        >
+          <span>💾</span>
+          <span>{{ modoEdicion() ? 'Actualizar' : 'Crear Cliente' }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

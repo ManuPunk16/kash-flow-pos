@@ -1,0 +1,221 @@
+<!-- ✅ Validar que cliente exista antes de renderizar -->
+@if (cliente()) {
+<!-- Overlay con z-index más alto -->
+<div
+  class="fixed inset-0 bg-black bg-opacity-50 z-60 flex items-center justify-center p-4"
+  (click)="cerrar()"
+>
+  <!-- Modal -->
+  <div
+    class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+    (click)="$event.stopPropagation()"
+  >
+    <!-- Header -->
+    <div
+      class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10"
+    >
+      <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <span>💵</span>
+        <span>Registrar Abono</span>
+      </h2>
+      <button
+        (click)="cerrar()"
+        class="text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        <span class="text-3xl">×</span>
+      </button>
+    </div>
+
+    <!-- Información del Cliente -->
+    <div class="p-6 bg-gray-50 border-b border-gray-200">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="bg-blue-100 p-3 rounded-full">
+          <span class="text-2xl">👤</span>
+        </div>
+        <div>
+          <h3 class="font-bold text-gray-900">
+            {{ cliente()!.nombre }} {{ cliente()!.apellido }}
+          </h3>
+          @if (cliente()!.identificacion) {
+          <p class="text-sm text-gray-500">
+            CC: {{ cliente()!.identificacion }}
+          </p>
+          }
+        </div>
+      </div>
+
+      <!-- Saldo Actual -->
+      <div class="bg-red-100 border-l-4 border-red-500 p-4 rounded">
+        <p class="text-sm text-red-700 mb-1">Saldo Actual</p>
+        <p class="text-3xl font-bold text-red-800">
+          ${{ cliente()!.saldoActual.toLocaleString('es-MX') }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Formulario -->
+    <form (ngSubmit)="guardar()" class="p-6 space-y-6">
+      <!-- Monto del Abono -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">
+          Monto del Abono <span class="text-red-500">*</span>
+        </label>
+        <div class="relative">
+          <span
+            class="absolute left-4 top-3.5 text-gray-500 text-lg font-semibold"
+            >$</span
+          >
+          <input
+            type="number"
+            [value]="montoAbono()"
+            (input)="montoAbono.set(+$any($event.target).value)"
+            placeholder="0"
+            min="0"
+            [max]="cliente()!.saldoActual"
+            step="1000"
+            required
+            class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-semibold"
+          />
+        </div>
+        <div class="flex items-center justify-between mt-2">
+          @if (montoAbono() > cliente()!.saldoActual) {
+          <p class="text-xs text-red-500">
+            ❌ El abono no puede exceder la deuda
+          </p>
+          } @else if (montoAbono() > 0) {
+          <p class="text-xs text-green-600">
+            ✅ Válido ({{ porcentajePagado().toFixed(0) }}% de la deuda)
+          </p>
+          } @else {
+          <p class="text-xs text-gray-500">Ingresa el monto del abono</p>
+          }
+          <button
+            type="button"
+            (click)="pagarTodo()"
+            class="text-xs text-blue-600 hover:text-blue-800 font-semibold underline"
+          >
+            Pagar todo
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra de Progreso -->
+      @if (montoAbono() > 0 && montoAbono() <= cliente()!.saldoActual) {
+      <div class="bg-gray-200 rounded-full h-4 overflow-hidden">
+        <div
+          class="bg-green-500 h-full transition-all duration-300"
+          [style.width.%]="porcentajePagado()"
+        ></div>
+      </div>
+      }
+
+      <!-- Nuevo Saldo -->
+      <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded">
+        <p class="text-sm text-green-700 mb-1">Nuevo Saldo</p>
+        <p class="text-3xl font-bold text-green-800">
+          ${{ nuevoSaldo().toLocaleString('es-MX') }}
+        </p>
+      </div>
+
+      <!-- Método de Pago -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-3">
+          Método de Pago <span class="text-red-500">*</span>
+        </label>
+        <div class="grid grid-cols-3 gap-3">
+          <button
+            type="button"
+            (click)="seleccionarMetodoPago('efectivo')"
+            [class.bg-blue-600]="metodoPago() === 'efectivo'"
+            [class.text-white]="metodoPago() === 'efectivo'"
+            [class.bg-gray-100]="metodoPago() !== 'efectivo'"
+            [class.text-gray-700]="metodoPago() !== 'efectivo'"
+            class="py-3 px-4 rounded-lg font-semibold transition-colors flex flex-col items-center gap-2"
+          >
+            <span class="text-2xl">💵</span>
+            <span class="text-sm">Efectivo</span>
+          </button>
+
+          <button
+            type="button"
+            (click)="seleccionarMetodoPago('transferencia')"
+            [class.bg-blue-600]="metodoPago() === 'transferencia'"
+            [class.text-white]="metodoPago() === 'transferencia'"
+            [class.bg-gray-100]="metodoPago() !== 'transferencia'"
+            [class.text-gray-700]="metodoPago() !== 'transferencia'"
+            class="py-3 px-4 rounded-lg font-semibold transition-colors flex flex-col items-center gap-2"
+          >
+            <span class="text-2xl">🏦</span>
+            <span class="text-sm">Transfer.</span>
+          </button>
+
+          <button
+            type="button"
+            (click)="seleccionarMetodoPago('tarjeta')"
+            [class.bg-blue-600]="metodoPago() === 'tarjeta'"
+            [class.text-white]="metodoPago() === 'tarjeta'"
+            [class.bg-gray-100]="metodoPago() !== 'tarjeta'"
+            [class.text-gray-700]="metodoPago() !== 'tarjeta'"
+            class="py-3 px-4 rounded-lg font-semibold transition-colors flex flex-col items-center gap-2"
+          >
+            <span class="text-2xl">💳</span>
+            <span class="text-sm">Tarjeta</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Notas Opcionales -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">
+          Notas (opcional)
+        </label>
+        <textarea
+          [value]="notas()"
+          (input)="notas.set($any($event.target).value)"
+          placeholder="Abono parcial, pago quincenal, etc."
+          rows="2"
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+        ></textarea>
+      </div>
+
+      <!-- Acciones -->
+      <div class="flex gap-3 pt-4">
+        <button
+          type="button"
+          (click)="cerrar()"
+          class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          [disabled]="!formularioValido()"
+          class="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+        >
+          <span>✅</span>
+          <span>Registrar Abono</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+} @else {
+<!-- Fallback si cliente es null -->
+<div
+  class="fixed inset-0 bg-black bg-opacity-50 z-60 flex items-center justify-center p-4"
+>
+  <div class="bg-white rounded-xl shadow-2xl p-8 text-center">
+    <span class="text-6xl mb-4 block">⚠️</span>
+    <h3 class="text-xl font-bold text-gray-900 mb-2">
+      No se pudo cargar el cliente
+    </h3>
+    <p class="text-gray-600 mb-4">Intenta nuevamente</p>
+    <button
+      (click)="cerrar()"
+      class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+    >
+      Cerrar
+    </button>
+  </div>
+</div>
+}

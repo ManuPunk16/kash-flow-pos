@@ -1,0 +1,215 @@
+<!-- Overlay -->
+<div
+  class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+  (click)="cerrar()"
+>
+  <!-- Modal -->
+  <div
+    class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+    (click)="$event.stopPropagation()"
+  >
+    <!-- Header -->
+    <div
+      class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10"
+    >
+      <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <span>📊</span>
+        <span>Detalle del Cliente</span>
+      </h2>
+      <button
+        (click)="cerrar()"
+        class="text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        <span class="text-3xl">×</span>
+      </button>
+    </div>
+
+    <!-- Contenido -->
+    <div class="p-6 space-y-6">
+      <!-- Información Personal -->
+      <div class="bg-gray-50 rounded-lg p-5">
+        <h3
+          class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"
+        >
+          <span>👤</span>
+          <span>Información Personal</span>
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <p class="text-sm text-gray-500">Nombre Completo</p>
+            <p class="text-lg font-semibold text-gray-900">
+              {{ cliente().nombre }} {{ cliente().apellido }}
+            </p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500">Identificación</p>
+            <p class="text-lg font-semibold text-gray-900">
+              {{ cliente().identificacion || 'N/A' }}
+            </p>
+          </div>
+          @if (cliente().email) {
+          <div>
+            <p class="text-sm text-gray-500">Email</p>
+            <p class="text-lg font-semibold text-gray-900">
+              {{ cliente().email }}
+            </p>
+          </div>
+          } @if (cliente().telefono) {
+          <div>
+            <p class="text-sm text-gray-500">Teléfono</p>
+            <p class="text-lg font-semibold text-gray-900">
+              {{ cliente().telefono }}
+            </p>
+          </div>
+          } @if (cliente().direccion) {
+          <div class="col-span-2">
+            <p class="text-sm text-gray-500">Dirección</p>
+            <p class="text-lg font-semibold text-gray-900">
+              {{ cliente().direccion }}
+            </p>
+          </div>
+          }
+        </div>
+      </div>
+
+      <!-- Estado Financiero -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Saldo Actual -->
+        <div class="bg-white border-2 border-gray-200 rounded-lg p-5">
+          <p class="text-sm text-gray-500 mb-2">Saldo Actual</p>
+          @if (cliente().saldoActual > 0) {
+          <p class="text-3xl font-bold text-red-600">
+            ${{ cliente().saldoActual.toLocaleString('es-MX') }}
+          </p>
+          } @else {
+          <p class="text-3xl font-bold text-green-600">$0</p>
+          }
+          <div class="mt-3">
+            <span
+              class="px-3 py-1 rounded-full text-xs font-semibold"
+              [class]="estadoFinanciero().color + ' bg-opacity-10 bg-current'"
+            >
+              {{ estadoFinanciero().emoji }} {{ estadoFinanciero().texto }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Saldo Histórico -->
+        <div class="bg-white border-2 border-gray-200 rounded-lg p-5">
+          <p class="text-sm text-gray-500 mb-2">Total Histórico</p>
+          <p class="text-3xl font-bold text-gray-700">
+            ${{ cliente().saldoHistorico.toLocaleString('es-MX') }}
+          </p>
+          <p class="text-xs text-gray-500 mt-3">
+            Monto total que ha comprado a crédito
+          </p>
+        </div>
+
+        <!-- Días Sin Pagar -->
+        <div class="bg-white border-2 border-gray-200 rounded-lg p-5">
+          <p class="text-sm text-gray-500 mb-2">Días Sin Pagar</p>
+          <p class="text-3xl font-bold text-orange-600">
+            {{ cliente().diasSinPagar }}
+          </p>
+          @if (cliente().ultimaCompra) {
+          <p class="text-xs text-gray-500 mt-3">
+            Última compra: {{ cliente().ultimaCompra | date: 'dd/MM/yyyy' }}
+          </p>
+          }
+        </div>
+      </div>
+
+      <!-- Botón de Abono -->
+      @if (cliente().saldoActual > 0) {
+      <button
+        (click)="registrarAbono()"
+        class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-4 rounded-lg transition-colors flex items-center justify-center gap-3 text-lg"
+      >
+        <span class="text-2xl">💵</span>
+        <span>Registrar Abono</span>
+      </button>
+      }
+
+      <!-- Historial de Intereses -->
+      @if (historicoOrdenado().length > 0) {
+      <div class="bg-white border-2 border-gray-200 rounded-lg p-5">
+        <h3
+          class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"
+        >
+          <span>📈</span>
+          <span>Historial de Intereses (20%)</span>
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="bg-gray-100 border-b-2 border-gray-200">
+              <tr>
+                <th class="px-4 py-3 text-left text-sm font-bold text-gray-700">
+                  Fecha
+                </th>
+                <th class="px-4 py-3 text-left text-sm font-bold text-gray-700">
+                  Descripción
+                </th>
+                <th
+                  class="px-4 py-3 text-right text-sm font-bold text-gray-700"
+                >
+                  Interés Aplicado
+                </th>
+                <th
+                  class="px-4 py-3 text-right text-sm font-bold text-gray-700"
+                >
+                  Nuevo Saldo
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              @for (registro of historicoOrdenado(); track registro.fecha) {
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-sm text-gray-700">
+                  {{ registro.fecha | date: 'dd/MM/yyyy' }}
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600">
+                  {{ registro.descripcion || 'Interés mensual' }}
+                </td>
+                <td
+                  class="px-4 py-3 text-sm font-semibold text-red-600 text-right"
+                >
+                  +${{ registro.montoAplicado.toLocaleString('es-MX') }}
+                </td>
+                <td
+                  class="px-4 py-3 text-sm font-semibold text-gray-900 text-right"
+                >
+                  ${{ registro.nuevoSaldo.toLocaleString('es-MX') }}
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      } @else {
+      <div
+        class="bg-green-50 border-l-4 border-green-500 p-5 rounded-lg text-center"
+      >
+        <span class="text-4xl mb-2 block">✅</span>
+        <p class="text-green-800 font-semibold">
+          Este cliente no tiene intereses aplicados
+        </p>
+        <p class="text-sm text-green-600 mt-1">
+          Se aplica interés del 20% el día 1 de cada mes a clientes con saldo
+          pendiente
+        </p>
+      </div>
+      }
+    </div>
+
+    <!-- Footer -->
+    <div class="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4">
+      <button
+        (click)="cerrar()"
+        class="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 rounded-lg transition-colors"
+      >
+        Cerrar
+      </button>
+    </div>
+  </div>
+</div>

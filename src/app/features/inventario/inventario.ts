@@ -15,6 +15,7 @@ import { PreferenciasService } from '@core/services/preferencias.service';
 import { CodigosBarrasService } from '@core/services/codigos-barras.service';
 import { Producto, CategoriaProducto } from '@core/models/producto.model';
 import { Proveedor } from '@core/models/proveedor.model';
+import { ModalCodigoBarras } from '@shared/components/modal-codigo-barras/modal-codigo-barras';
 
 interface CategoriaInfo {
   valor: CategoriaProducto | 'todas';
@@ -27,7 +28,7 @@ interface CategoriaInfo {
   templateUrl: './inventario.html',
   styleUrl: './inventario.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ModalCodigoBarras], // ✅ Importar modal
 })
 export class Inventario implements OnInit {
   private readonly productosService = inject(ProductosService);
@@ -307,6 +308,27 @@ export class Inventario implements OnInit {
       ((producto.precioVenta - producto.costoUnitario) / producto.precioVenta) *
       100
     );
+  }
+
+  // ✅ Estado para modal de código de barras
+  protected readonly modalCodigoBarrasAbierto = signal(false);
+  protected readonly productoCodigoBarras = signal<Producto | null>(null);
+
+  // ✅ Abrir modal de código de barras
+  protected abrirModalCodigoBarras(producto: Producto): void {
+    if (!producto.codigoBarras) {
+      alert('⚠️ Este producto no tiene código de barras asignado');
+      return;
+    }
+
+    this.productoCodigoBarras.set(producto);
+    this.modalCodigoBarrasAbierto.set(true);
+  }
+
+  // ✅ Cerrar modal de código de barras
+  protected cerrarModalCodigoBarras(): void {
+    this.modalCodigoBarrasAbierto.set(false);
+    this.productoCodigoBarras.set(null);
   }
 }
 

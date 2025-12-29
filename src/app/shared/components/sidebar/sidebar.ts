@@ -11,6 +11,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
+import { ProductosService } from '@core/services/productos.service';
 
 interface ItemMenu {
   ruta: string;
@@ -29,6 +30,7 @@ interface ItemMenu {
 export class Sidebar implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly productosService = inject(ProductosService); // ✅ Inyectar servicio
 
   // ✅ Two-way binding con el layout
   sidebarAbierto = model(true);
@@ -39,9 +41,18 @@ export class Sidebar implements OnInit, OnDestroy {
   );
   protected readonly esMobile = computed(() => this.anchoPantalla() < 1024);
 
-  protected readonly itemsMenu = signal<ItemMenu[]>([
+  // ✅ Contador de productos con stock bajo
+  protected readonly productosStockBajo = signal(0);
+
+  // ✅ Items de menú con badge dinámico
+  protected readonly itemsMenu = computed<ItemMenu[]>(() => [
     { ruta: '/pos', icono: '🛒', etiqueta: 'Punto de Venta' },
-    { ruta: '/inventario', icono: '📦', etiqueta: 'Inventario', badge: 3 },
+    {
+      ruta: '/inventario',
+      icono: '📦',
+      etiqueta: 'Inventario',
+      badge: this.productosStockBajo(), // ✅ Badge dinámico
+    },
     { ruta: '/clientes', icono: '👥', etiqueta: 'Clientes' },
     { ruta: '/proveedores', icono: '🏢', etiqueta: 'Proveedores' },
     { ruta: '/egresos', icono: '💸', etiqueta: 'Egresos' },
@@ -74,6 +85,27 @@ export class Sidebar implements OnInit, OnDestroy {
 
       window.addEventListener('resize', this.resizeListener);
     }
+
+    // ✅ Cargar contador de stock bajo
+    this.cargarProductosStockBajo();
+  }
+
+  // ✅ Cargar productos con stock bajo
+  private cargarProductosStockBajo(): void {
+    this.productosService.obtenerProductos().subscribe({
+      next: (productos) => {
+        const stockBajo = productos.filter(
+          (p) => p.stock <= p.stockMinimo && p.stock > 0
+        ).length;
+
+        this.productosStockBajo.set(stockBajo);
+        console.log('✅ Productos con stock bajo:', stockBajo);
+      },
+      error: (err) => {
+        console.error('❌ Error al cargar productos para badge:', err);
+        this.productosStockBajo.set(0);
+      },
+    });
   }
 
   ngOnDestroy(): void {

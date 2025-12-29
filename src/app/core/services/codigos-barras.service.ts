@@ -1,129 +1,187 @@
 import { Injectable } from '@angular/core';
-import { ConfiguracionCodigoBarras } from '@core/models/producto.model';
+import JsBarcode from 'jsbarcode';
 
 @Injectable({
   providedIn: 'root',
 })
 export class CodigosBarrasService {
-  private readonly configuracion: ConfiguracionCodigoBarras = {
-    prefijo: 'KASH',
-    longitudNumero: 8,
-    incluirChecksum: true,
-  };
-
   /**
-   * Genera un código de barras único
-   * Formato: PREFIJO + TIMESTAMP + RANDOM + CHECKSUM
-   * Ejemplo: KASH12345678C
+   * Generar código de barras único (EAN-13 compatible)
    */
   generarCodigoBarras(): string {
-    // Timestamp simplificado (últimos 6 dígitos)
-    const timestamp = Date.now().toString().slice(-6);
-
-    // Número aleatorio de 2 dígitos
-    const random = Math.floor(Math.random() * 100)
+    const timestamp = Date.now().toString();
+    const random = Math.floor(Math.random() * 10000)
       .toString()
-      .padStart(2, '0');
+      .padStart(4, '0');
+    const codigo = `${timestamp.slice(-8)}${random}`.slice(0, 12);
 
-    // Combinar
-    const numeroBase = timestamp + random;
-
-    // Generar código completo
-    let codigo = this.configuracion.prefijo + numeroBase;
-
-    // Agregar checksum si está configurado
-    if (this.configuracion.incluirChecksum) {
-      const checksum = this.calcularChecksum(numeroBase);
-      codigo += checksum;
-    }
-
-    return codigo;
+    // Calcular dígito verificador EAN-13
+    const digitoVerificador = this.calcularDigitoVerificadorEAN13(codigo);
+    return `${codigo}${digitoVerificador}`;
   }
 
   /**
-   * Valida formato de código de barras
-   */
-  validarCodigoBarras(codigo: string): boolean {
-    if (!codigo || codigo.length < 8) {
-      return false;
-    }
-
-    // Si tiene prefijo, validar que coincida
-    if (codigo.startsWith(this.configuracion.prefijo)) {
-      const numeroBase = codigo.slice(this.configuracion.prefijo.length, -1);
-      const checksumRecibido = codigo.slice(-1);
-      const checksumCalculado = this.calcularChecksum(numeroBase);
-
-      return checksumRecibido === checksumCalculado;
-    }
-
-    // Códigos sin prefijo son válidos (productos importados)
-    return /^[A-Z0-9]{8,}$/.test(codigo);
-  }
-
-  /**
-   * Calcula checksum Luhn (mod 10)
-   * @param numero String numérico
-   * @returns Dígito de verificación
-   */
-  private calcularChecksum(numero: string): string {
-    let suma = 0;
-    let alternar = false;
-
-    // Iterar de derecha a izquierda
-    for (let i = numero.length - 1; i >= 0; i--) {
-      let digito = parseInt(numero.charAt(i), 10);
-
-      if (alternar) {
-        digito *= 2;
-        if (digito > 9) {
-          digito -= 9;
-        }
-      }
-
-      suma += digito;
-      alternar = !alternar;
-    }
-
-    // Calcular dígito verificador
-    const checksum = (10 - (suma % 10)) % 10;
-    return checksum.toString();
-  }
-
-  /**
-   * Formatea código de barras para visualización
-   * KASH12345678C → KASH-1234-5678-C
+   * Formatear código de barras para visualización (agregar guiones)
    */
   formatearCodigoBarras(codigo: string): string {
-    if (!codigo || codigo.length < 8) {
-      return codigo;
-    }
+    if (!codigo || codigo.length < 8) return codigo;
 
-    // Si tiene prefijo KASH
-    if (codigo.startsWith('KASH')) {
-      const prefijo = codigo.slice(0, 4);
-      const parte1 = codigo.slice(4, 8);
-      const parte2 = codigo.slice(8, 12);
-      const checksum = codigo.slice(12);
-
-      return `${prefijo}-${parte1}-${parte2}${checksum ? '-' + checksum : ''}`;
-    }
-
-    // Formato genérico: grupos de 4
-    return codigo.match(/.{1,4}/g)?.join('-') || codigo;
+    // Formato: XXXX-XXXX-XXXX-X
+    return codigo.replace(/(\d{4})(?=\d)/g, '$1-');
   }
 
   /**
-   * Genera múltiples códigos únicos
+   * Generar imagen de código de barras
+   * @param codigo - Código a convertir en imagen
+   * @returns Data URL de la imagen generada
    */
-  generarCodigosEnLote(cantidad: number): string[] {
-    const codigos = new Set<string>();
+  generarImagenCodigoBarras(codigo: string): string {
+    const canvas = document.createElement('canvas');
 
-    while (codigos.size < cantidad) {
-      const codigo = this.generarCodigoBarras();
-      codigos.add(codigo);
+    try {
+      JsBarcode(canvas, codigo, {
+        format: 'CODE128', // Formato compatible universal
+        width: 2,
+        height: 80,
+        displayValue: true,
+        fontSize: 14,
+        margin: 10,
+        background: '#ffffff',
+        lineColor: '#000000',
+      });
+
+      return canvas.toDataURL('image/png');
+    } catch (error) {
+      console.error('❌ Error al generar código de barras:', error);
+      return '';
+    }
+  }
+
+  /**
+   * Descargar imagen de código de barras
+   */
+  descargarImagenCodigoBarras(codigo: string, nombreProducto: string): void {
+    const dataUrl = this.generarImagenCodigoBarras(codigo);
+
+    if (!dataUrl) {
+      console.error('❌ No se pudo generar la imagen');
+      return;
     }
 
-    return Array.from(codigos);
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `codigo-barras-${nombreProducto
+      .toLowerCase()
+      .replace(/\s+/g, '-')}.png`;
+    link.click();
+
+    console.log('✅ Código de barras descargado:', nombreProducto);
+  }
+
+  /**
+   * Copiar imagen al portapapeles
+   */
+  async copiarImagenAlPortapapeles(codigo: string): Promise<boolean> {
+    try {
+      const dataUrl = this.generarImagenCodigoBarras(codigo);
+
+      // Convertir data URL a Blob
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+
+      // Copiar al portapapeles
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob }),
+      ]);
+
+      console.log('✅ Código de barras copiado al portapapeles');
+      return true;
+    } catch (error) {
+      console.error('❌ Error al copiar al portapapeles:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Imprimir código de barras directamente
+   */
+  imprimirCodigoBarras(codigo: string, nombreProducto: string): void {
+    const dataUrl = this.generarImagenCodigoBarras(codigo);
+
+    if (!dataUrl) {
+      console.error('❌ No se pudo generar la imagen');
+      return;
+    }
+
+    // Crear ventana de impresión
+    const ventanaImpresion = window.open('', '_blank', 'width=600,height=400');
+
+    if (!ventanaImpresion) {
+      alert('⚠️ Habilita las ventanas emergentes para imprimir');
+      return;
+    }
+
+    ventanaImpresion.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Imprimir Código de Barras - ${nombreProducto}</title>
+          <style>
+            body {
+              margin: 0;
+              padding: 20px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              font-family: Arial, sans-serif;
+            }
+            h2 {
+              margin-bottom: 10px;
+              color: #333;
+            }
+            img {
+              border: 1px solid #ddd;
+              padding: 10px;
+              background: white;
+            }
+            p {
+              margin-top: 10px;
+              color: #666;
+              font-size: 14px;
+            }
+          </style>
+        </head>
+        <body>
+          <h2>${nombreProducto}</h2>
+          <img src="${dataUrl}" alt="Código de Barras" />
+          <p>Código: ${this.formatearCodigoBarras(codigo)}</p>
+        </body>
+      </html>
+    `);
+
+    ventanaImpresion.document.close();
+    ventanaImpresion.focus();
+
+    // Imprimir automáticamente después de cargar
+    ventanaImpresion.onload = () => {
+      ventanaImpresion.print();
+      // ventanaImpresion.close(); // Opcional: cerrar después de imprimir
+    };
+  }
+
+  /**
+   * Calcular dígito verificador EAN-13
+   */
+  private calcularDigitoVerificadorEAN13(codigo: string): number {
+    const digitos = codigo.split('').map(Number);
+    let suma = 0;
+
+    for (let i = 0; i < digitos.length; i++) {
+      suma += digitos[i] * (i % 2 === 0 ? 1 : 3);
+    }
+
+    const residuo = suma % 10;
+    return residuo === 0 ? 0 : 10 - residuo;
   }
 }

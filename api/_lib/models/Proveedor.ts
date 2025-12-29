@@ -23,7 +23,7 @@ const proveedorSchema = new Schema<IProveedor>(
     email: { type: String, lowercase: true },
     telefono: { type: String },
     direccion: { type: String },
-    nit: { type: String, unique: true },
+    nit: { type: String, unique: true, sparse: true },
     saldoPendiente: { type: Number, default: 0, min: 0 },
     terminoPago: { type: Number, default: 30 },
     activo: { type: Boolean, default: true },
@@ -40,5 +40,15 @@ const proveedorSchema = new Schema<IProveedor>(
 
 proveedorSchema.index({ nombre: 1 });
 proveedorSchema.index({ activo: 1 });
+proveedorSchema.index({ nit: 1 }, { unique: true, sparse: true });
+
+// ✅ VIRTUAL: Calcular productos en tiempo real
+proveedorSchema.virtual('productosActivos', {
+  ref: 'Producto',
+  localField: '_id',
+  foreignField: 'proveedorId',
+  count: true,
+  match: { activo: true },
+});
 
 export const Proveedor = model<IProveedor>('Proveedor', proveedorSchema);

@@ -6,6 +6,7 @@ import {
   esquemaActualizarProveedor,
 } from '../validacion/schemas.js';
 import { Proveedor } from '../models/index.js';
+import { Producto } from '../models/index.js';
 import { conectarMongoDB } from '../config/database.js';
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
@@ -26,10 +27,8 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   }
 
   try {
-    // ✅ Conectar a MongoDB
     await conectarMongoDB();
 
-    // ✅ Autenticación obligatoria
     let autenticado = false;
     await verificarAutenticacion(req, res, () => {
       autenticado = true;
@@ -39,46 +38,59 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       return;
     }
 
-    // ✅ Extraer ruta correctamente
     const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
     const rutaProveedor = pathname.replace('/api/proveedores', '') || '/';
 
     console.log('🔍 Debug proveedores:', {
-      urlCompleta: req.url,
       pathname,
       rutaProveedor,
       metodo: req.method,
     });
 
-    // ✅ Routing por método
     switch (req.method) {
       case 'GET':
-        // GET /api/proveedores - Obtener todos
+        // GET /api/proveedores - Obtener todos con conteo real
         if (rutaProveedor === '/' || rutaProveedor === '') {
           console.log('📦 Consultando proveedores...');
           const inicio = Date.now();
 
+          // ✅ Obtener proveedores
           const proveedores = await Proveedor.find({ activo: true })
             .select('-__v')
             .lean()
             .maxTimeMS(5000);
 
+          // ✅ Calcular productos por proveedor en paralelo
+          const proveedoresConProductos = await Promise.all(
+            proveedores.map(async (proveedor) => {
+              const conteoProductos = await Producto.countDocuments({
+                proveedorId: proveedor._id,
+                activo: true,
+              });
+
+              return {
+                ...proveedor,
+                productosCargados: conteoProductos,
+              };
+            })
+          );
+
           const duracion = Date.now() - inicio;
           console.log(
-            `✅ Proveedores obtenidos: ${proveedores.length} en ${duracion}ms`
+            `✅ Proveedores obtenidos: ${proveedoresConProductos.length} en ${duracion}ms`
           );
 
           res.status(200).json({
             exito: true,
-            datos: proveedores,
-            cantidad: proveedores.length,
+            datos: proveedoresConProductos,
+            cantidad: proveedoresConProductos.length,
             usuario: req.usuario.email,
             tiempoConsulta: `${duracion}ms`,
           });
           return;
         }
 
-        // GET /api/proveedores/con-deuda - Proveedores con saldo pendiente
+        // GET /api/proveedores/con-deuda
         if (rutaProveedor.includes('/con-deuda')) {
           const proveedoresConDeuda = await Proveedor.find({
             activo: true,
@@ -89,11 +101,26 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
             .lean()
             .maxTimeMS(5000);
 
+          // ✅ Agregar conteo de productos
+          const proveedoresConProductos = await Promise.all(
+            proveedoresConDeuda.map(async (proveedor) => {
+              const conteoProductos = await Producto.countDocuments({
+                proveedorId: proveedor._id,
+                activo: true,
+              });
+
+              return {
+                ...proveedor,
+                productosCargados: conteoProductos,
+              };
+            })
+          );
+
           res.status(200).json({
             exito: true,
-            datos: proveedoresConDeuda,
-            cantidad: proveedoresConDeuda.length,
-            totalDeuda: proveedoresConDeuda.reduce(
+            datos: proveedoresConProductos,
+            cantidad: proveedoresConProductos.length,
+            totalDeuda: proveedoresConProductos.reduce(
               (sum, p) => sum + p.saldoPendiente,
               0
             ),
@@ -101,7 +128,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        // GET /api/proveedores/[id] - Obtener por ID
+        // GET /api/proveedores/[id]
         const proveedorId = rutaProveedor.replace('/', '');
 
         if (proveedorId && /^[0-9a-fA-F]{24}$/.test(proveedorId)) {
@@ -118,19 +145,25 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
             return;
           }
 
+          // ✅ Calcular productos del proveedor
+          const conteoProductos = await Producto.countDocuments({
+            proveedorId: proveedor._id,
+            activo: true,
+          });
+
           res.status(200).json({
             exito: true,
-            dato: proveedor,
+            dato: {
+              ...proveedor,
+              productosCargados: conteoProductos,
+            },
           });
           return;
         }
 
-        // ID inválido
         res.status(400).json({
           exito: false,
           error: 'ID de proveedor inválido',
-          mensaje:
-            'El ID debe ser un ObjectId válido de MongoDB (24 caracteres hexadecimales)',
         });
         return;
 
@@ -156,7 +189,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           ...value,
           activo: true,
           saldoPendiente: 0,
-          productosCargados: 0,
+          productosCargados: 0, // ✅ Inicialmente 0
           fechaUltimoAbono: null,
           fechaCreacion: new Date(),
           fechaActualizacion: new Date(),
@@ -216,10 +249,19 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
+        // ✅ Agregar conteo actualizado
+        const conteoProductosActualizado = await Producto.countDocuments({
+          proveedorId: proveedorActualizado._id,
+          activo: true,
+        });
+
         res.status(200).json({
           exito: true,
           mensaje: 'Proveedor actualizado exitosamente ✅',
-          dato: proveedorActualizado,
+          dato: {
+            ...proveedorActualizado.toObject(),
+            productosCargados: conteoProductosActualizado,
+          },
         });
         return;
 

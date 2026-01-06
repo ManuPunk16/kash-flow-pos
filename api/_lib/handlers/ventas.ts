@@ -99,28 +99,38 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        // Validaciones básicas
-        if (
-          !clienteId ||
-          !items ||
-          !Array.isArray(items) ||
-          items.length === 0
-        ) {
+        // ✅ CAMBIAR: clienteId solo es obligatorio para FIADO
+        if (metodoPago === MetodoPago.FIADO && !clienteId) {
           res.status(400).json({
             exito: false,
-            error: 'Datos de venta incompletos',
+            error: 'Cliente requerido para venta a crédito',
           });
           return;
         }
 
-        // Verificar cliente
-        const cliente = await Cliente.findById(clienteId);
-        if (!cliente) {
-          res.status(404).json({
+        // Validaciones básicas
+        if (!items || !Array.isArray(items) || items.length === 0) {
+          res.status(400).json({
             exito: false,
-            error: 'Cliente no encontrado',
+            error: 'Debe haber al menos un producto en la venta',
           });
           return;
+        }
+
+        // ✅ CAMBIAR: Cliente puede ser null para efectivo/tarjeta
+        let cliente: any = null;
+        let nombreCliente = 'Cliente de mostrador';
+
+        if (clienteId) {
+          cliente = await Cliente.findById(clienteId);
+          if (!cliente) {
+            res.status(404).json({
+              exito: false,
+              error: 'Cliente no encontrado',
+            });
+            return;
+          }
+          nombreCliente = `${cliente.nombre} ${cliente.apellido}`;
         }
 
         // Validar stock de productos
@@ -174,22 +184,22 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        // Registrar saldo anterior
-        const saldoAnterior = cliente.saldoActual;
+        // Registrar saldo anterior (solo si hay cliente)
+        const saldoAnterior = cliente?.saldoActual || 0;
 
         // ✅ Actualizar saldo si es fiado (usando enum)
-        if (metodoPago === MetodoPago.FIADO) {
+        if (metodoPago === MetodoPago.FIADO && cliente) {
           cliente.saldoActual += total;
           cliente.saldoHistorico += total;
           cliente.ultimaCompra = new Date();
           await cliente.save();
         }
 
-        // Crear venta
+        // ✅ Crear venta (clienteId puede ser null)
         const nuevaVenta = new Venta({
           numeroVenta,
-          clienteId,
-          nombreCliente: `${cliente.nombre} ${cliente.apellido}`,
+          clienteId: clienteId || null, // ✅ Permitir null
+          nombreCliente,
           usuarioId: usuario._id,
           nombreUsuario: `${usuario.nombre} ${usuario.apellido}`,
           items,
@@ -198,10 +208,10 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           total,
           metodoPago,
           saldoClienteAntes: saldoAnterior,
-          saldoClienteDespues: cliente.saldoActual,
+          saldoClienteDespues: cliente?.saldoActual || 0,
           gananciaTotal,
           observaciones: observaciones || '',
-          estado: EstadoVenta.COMPLETADA, // ✅ Usar enum
+          estado: EstadoVenta.COMPLETADA,
           fechaVenta: new Date(),
         });
 

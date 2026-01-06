@@ -59,7 +59,12 @@ const itemVentaSchema = new Schema<IItemVenta>(
 const ventaSchema = new Schema<IVenta>(
   {
     numeroVenta: { type: String, required: true, unique: true },
-    clienteId: { type: Schema.Types.ObjectId, ref: 'Cliente', required: true },
+    clienteId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Cliente',
+      required: false,
+      default: null,
+    },
     nombreCliente: { type: String, required: true },
     usuarioId: { type: Schema.Types.ObjectId, ref: 'Usuario', required: true },
     nombreUsuario: { type: String, required: true },

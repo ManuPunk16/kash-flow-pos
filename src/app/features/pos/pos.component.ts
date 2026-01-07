@@ -12,6 +12,7 @@ import { ProductosService } from '@core/services/productos.service';
 import { AuthService } from '@core/services/auth.service';
 import { ClientesService } from '@core/services/clientes.service';
 import { VentasService } from '@core/services/ventas.service';
+import { CarritoService } from '@core/services/carrito.service'; // ✅ NUEVO
 import { Producto } from '@core/models/producto.model';
 import { ItemCarrito, productoAItemCarrito } from '@core/models/carrito.model';
 import { Cliente } from '@core/models/cliente.model';
@@ -37,11 +38,16 @@ export class PosComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly clientesService = inject(ClientesService);
   private readonly ventasService = inject(VentasService);
+  private readonly carritoService = inject(CarritoService);
 
   // 🔥 Estado con signals
   private readonly todosLosProductos = signal<Producto[]>([]);
   protected readonly terminoBusqueda = signal('');
-  protected readonly carrito = signal<ItemCarrito[]>([]);
+
+  protected readonly carrito = computed(() =>
+    this.carritoService.obtenerItems()
+  );
+
   protected readonly clienteSeleccionado = signal<Cliente | null>(null);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -59,7 +65,6 @@ export class PosComponent implements OnInit {
   protected readonly productos = computed(() => {
     const termino = this.terminoBusqueda().toLowerCase().trim();
 
-    // Filtrar por búsqueda
     let productosFiltrados = termino
       ? this.todosLosProductos().filter((producto) => {
           const nombreCoincide = producto.nombre
@@ -81,17 +86,25 @@ export class PosComponent implements OnInit {
     return productosFiltrados.slice(inicio, fin);
   });
 
-  // 🧮 Estado derivado
-  protected readonly total = computed(() =>
-    this.carrito().reduce((sum, item) => sum + item.subtotal, 0)
-  );
-
+  // 🧮 Estado derivado - ✅ Usar computed del servicio
+  protected readonly total = computed(() => this.carritoService.subtotal());
   protected readonly cantidadItems = computed(() =>
-    this.carrito().reduce((sum, item) => sum + item.cantidad, 0)
+    this.carritoService.cantidadItems()
   );
-
   protected readonly gananciaTotal = computed(() =>
-    this.carrito().reduce((sum, item) => sum + item.ganancia, 0)
+    this.carritoService.gananciaTotal()
+  );
+  protected readonly totalConDescuento = computed(() =>
+    this.carritoService.totalConDescuento()
+  );
+  protected readonly totalFinal = computed(() =>
+    this.carritoService.totalFinal()
+  );
+  protected readonly cambioEfectivo = computed(() =>
+    this.carritoService.cambioEfectivo()
+  );
+  protected readonly montoComisionTerminal = computed(() =>
+    this.carritoService.montoComision()
   );
 
   protected readonly gananciaPorItem = computed(() =>
@@ -127,6 +140,9 @@ export class PosComponent implements OnInit {
   });
 
   protected readonly metodoPago = signal<MetodoPago>(MetodoPago.EFECTIVO);
+  protected readonly descuento = signal(0);
+  protected readonly comisionTerminal = signal(3.5);
+  protected readonly montoPagadoEfectivo = signal(0);
 
   protected readonly METODOS_PAGO_DISPONIBLES = [
     { valor: MetodoPago.EFECTIVO, etiqueta: 'Efectivo', icono: '💵' },
@@ -135,48 +151,18 @@ export class PosComponent implements OnInit {
     { valor: MetodoPago.FIADO, etiqueta: 'Fiado', icono: '📝' },
   ] as const;
 
-  protected readonly descuento = signal(0);
-
-  protected readonly comisionTerminal = signal(3.5);
   protected readonly mostrarInputComision = signal(false);
-
-  protected readonly montoPagadoEfectivo = signal(0);
-
-  protected readonly cambioEfectivo = computed(() => {
-    if (this.metodoPago() !== MetodoPago.EFECTIVO) return 0;
-    const montoPagado = this.montoPagadoEfectivo();
-    const totalAPagar = this.totalFinal();
-    return Math.max(0, montoPagado - totalAPagar);
-  });
 
   protected readonly esMontoPagadoSuficiente = computed(() => {
     if (this.metodoPago() !== MetodoPago.EFECTIVO) return true;
     return this.montoPagadoEfectivo() >= this.totalFinal();
   });
 
-  protected readonly totalConDescuento = computed(() => {
-    const subtotal = this.total();
-    const desc = this.descuento();
-    return Math.max(0, subtotal - desc);
-  });
-
-  protected readonly montoComisionTerminal = computed(() => {
-    if (this.metodoPago() !== MetodoPago.TARJETA) return 0;
-    return (this.totalConDescuento() * this.comisionTerminal()) / 100;
-  });
-
-  protected readonly totalFinal = computed(() => {
-    const base = this.totalConDescuento();
-    const comision = this.montoComisionTerminal();
-    return base + comision;
-  });
-
   protected readonly puedeVenderFiado = computed(() => {
     const cliente = this.clienteSeleccionado();
     if (!cliente) return false;
 
-    // ⚠️ Si el backend NO tiene limiteCredito, usar un valor por defecto
-    const limiteCredito = cliente.limiteCredito ?? 100000; // $100,000 por defecto
+    const limiteCredito = cliente.limiteCredito ?? 100000;
     const nuevoSaldo = cliente.saldoActual + this.totalConDescuento();
 
     return nuevoSaldo <= limiteCredito;
@@ -194,7 +180,6 @@ export class PosComponent implements OnInit {
     if (this.carrito().length === 0) return false;
     if (this.loading()) return false;
 
-    // Si es fiado, debe haber cliente y no exceder límite
     if (this.metodoPago() === MetodoPago.FIADO) {
       if (!this.clienteSeleccionado()) return false;
       if (!this.puedeVenderFiado()) return false;
@@ -232,6 +217,12 @@ export class PosComponent implements OnInit {
   ngOnInit(): void {
     this.cargarProductos();
     this.cargarClientes();
+
+    // ✅ NUEVO: Mostrar mensaje si hay carrito restaurado
+    const cantidadRestaurada = this.carritoService.cantidadItems();
+    if (cantidadRestaurada > 0) {
+      this.mostrarAlerta(`✅ Carrito restaurado (${cantidadRestaurada} items)`);
+    }
   }
 
   private cargarProductos(): void {
@@ -279,6 +270,7 @@ export class PosComponent implements OnInit {
     this.terminoBusqueda.set('');
   }
 
+  // ✅ CAMBIO: Usar carritoService
   protected agregarAlCarrito(producto: Producto): void {
     if (producto.stock === 0) {
       this.mostrarAlerta('⚠️ Producto sin stock');
@@ -295,33 +287,19 @@ export class PosComponent implements OnInit {
 
       if (stockRestante === 0) {
         this.mostrarAlerta(
-          `⚠️ Ya tienes todo el stock disponible de "${producto.nombre}" en el carrito (${producto.stock} unidades)`
+          `⚠️ Ya tienes todo el stock disponible de "${producto.nombre}" en el carrito`
         );
         return;
       }
 
-      this.carrito.update((items) =>
-        items.map((item) =>
-          item.productoId === producto._id
-            ? {
-                ...item,
-                cantidad: item.cantidad + 1,
-                subtotal: item.precioUnitario * (item.cantidad + 1),
-                ganancia:
-                  (item.precioUnitario - item.costoUnitario) *
-                  (item.cantidad + 1),
-              }
-            : item
-        )
-      );
+      this.carritoService.incrementarCantidad(producto._id);
     } else {
       const nuevoItem = productoAItemCarrito(producto, 1);
-      this.carrito.update((items) => [...items, nuevoItem]);
+      this.carritoService.agregarItem(nuevoItem);
     }
-
-    setTimeout(() => this.mensajeAlerta.set(null), 3000);
   }
 
+  // ✅ CAMBIO: Usar carritoService
   protected incrementarCantidad(productoId: string): void {
     const item = this.carrito().find((i) => i.productoId === productoId);
 
@@ -334,52 +312,27 @@ export class PosComponent implements OnInit {
       return;
     }
 
-    this.carrito.update((items) =>
-      items.map((i) =>
-        i.productoId === productoId
-          ? {
-              ...i,
-              cantidad: i.cantidad + 1,
-              subtotal: i.precioUnitario * (i.cantidad + 1),
-              ganancia: (i.precioUnitario - i.costoUnitario) * (i.cantidad + 1),
-            }
-          : i
-      )
-    );
+    this.carritoService.incrementarCantidad(productoId);
   }
 
+  // ✅ CAMBIO: Usar carritoService
   protected decrementarCantidad(productoId: string): void {
-    const item = this.carrito().find((i) => i.productoId === productoId);
-
-    if (!item) return;
-
-    if (item.cantidad === 1) {
-      this.eliminarDelCarrito(productoId);
-    } else {
-      this.carrito.update((items) =>
-        items.map((i) =>
-          i.productoId === productoId
-            ? {
-                ...i,
-                cantidad: i.cantidad - 1,
-                subtotal: i.precioUnitario * (i.cantidad - 1),
-                ganancia:
-                  (i.precioUnitario - i.costoUnitario) * (i.cantidad - 1),
-              }
-            : i
-        )
-      );
-    }
+    this.carritoService.decrementarCantidad(productoId);
   }
 
+  // ✅ CAMBIO: Usar carritoService
   protected eliminarDelCarrito(productoId: string): void {
-    this.carrito.update((items) =>
-      items.filter((item) => item.productoId !== productoId)
-    );
+    this.carritoService.eliminarItem(productoId);
   }
 
+  // ✅ CAMBIO: Usar carritoService
   protected limpiarCarrito(): void {
-    this.carrito.set([]);
+    this.carritoService.limpiar();
+    this.descuento.set(0);
+    this.clienteSeleccionado.set(null);
+    this.metodoPago.set(MetodoPago.EFECTIVO);
+    this.comisionTerminal.set(3.5);
+    this.montoPagadoEfectivo.set(0);
   }
 
   protected recargarProductos(): void {
@@ -416,6 +369,7 @@ export class PosComponent implements OnInit {
 
   protected seleccionarCliente(cliente: Cliente): void {
     this.clienteSeleccionado.set(cliente);
+    this.carritoService.establecerCliente(cliente._id);
     this.busquedaCliente.set('');
     this.mostrarListaClientes.set(false);
     console.log('✅ Cliente seleccionado:', cliente.nombre, cliente.apellido);
@@ -423,17 +377,18 @@ export class PosComponent implements OnInit {
 
   protected limpiarCliente(): void {
     this.clienteSeleccionado.set(null);
+    this.carritoService.establecerCliente(null);
     this.busquedaCliente.set('');
     this.mostrarListaClientes.set(false);
   }
 
   protected cerrarListaClientes(): void {
-    // Cerrar con delay para permitir click en item
     setTimeout(() => this.mostrarListaClientes.set(false), 200);
   }
 
   protected cambiarMetodoPago(metodo: MetodoPago): void {
     this.metodoPago.set(metodo);
+    this.carritoService.establecerMetodoPago(metodo);
 
     if (metodo === MetodoPago.FIADO && !this.clienteSeleccionado()) {
       this.mostrarAlerta(
@@ -465,11 +420,12 @@ export class PosComponent implements OnInit {
     }
 
     this.montoPagadoEfectivo.set(monto);
-    console.log('✅ Monto pagado actualizado:', monto);
+    this.carritoService.establecerMontoPagadoEfectivo(monto);
   }
 
   protected aplicarMontoExacto(): void {
     this.montoPagadoEfectivo.set(this.totalFinal());
+    this.carritoService.establecerMontoPagadoEfectivo(this.totalFinal());
   }
 
   protected aplicarDescuento(monto: number): void {
@@ -486,7 +442,7 @@ export class PosComponent implements OnInit {
     }
 
     this.descuento.set(monto);
-    console.log('✅ Descuento aplicado: $', monto);
+    this.carritoService.establecerDescuento(monto);
   }
 
   protected actualizarDescuento(event: Event): void {
@@ -504,7 +460,6 @@ export class PosComponent implements OnInit {
     }
 
     this.mostrarModalVenta.set(true);
-    console.log('✅ Modal de venta abierto');
   }
 
   protected cerrarModalVenta(): void {
@@ -514,11 +469,9 @@ export class PosComponent implements OnInit {
     }
 
     this.mostrarModalVenta.set(false);
-    console.log('❌ Modal de venta cerrado');
   }
 
   protected confirmarVenta(): void {
-    // Validaciones
     if (!this.puedeFinalizarVenta()) {
       this.mostrarAlerta('⚠️ Completa todos los datos requeridos');
       return;
@@ -551,8 +504,6 @@ export class PosComponent implements OnInit {
       observaciones: '',
     };
 
-    console.log('📤 Enviando DTO de venta:', JSON.stringify(ventaDTO, null, 2));
-
     this.ventasService.registrarVenta(ventaDTO).subscribe({
       next: (venta) => {
         console.log('✅ Venta registrada:', venta);
@@ -570,17 +521,9 @@ export class PosComponent implements OnInit {
           this.mostrarAlerta('✅ Venta registrada exitosamente');
         }
 
-        // Limpiar carrito y resetear estado
+        // ✅ CAMBIO: Limpiar usando servicio
         this.limpiarCarrito();
-        this.descuento.set(0);
-        this.clienteSeleccionado.set(null);
-        this.metodoPago.set(MetodoPago.EFECTIVO);
         this.mostrarModalVenta.set(false);
-        this.comisionTerminal.set(3.5);
-        this.mostrarInputComision.set(false);
-        this.montoPagadoEfectivo.set(0);
-
-        // Recargar productos (actualizar stock)
         this.cargarProductos();
       },
       error: (error) => {
@@ -591,8 +534,6 @@ export class PosComponent implements OnInit {
           error.message ||
           'Error desconocido';
         this.mostrarAlerta(`❌ Error: ${mensajeError}`);
-        console.log('📋 DTO enviado:', JSON.stringify(ventaDTO, null, 2));
-        console.log('📋 Error completo:', JSON.stringify(error, null, 2));
       },
       complete: () => {
         this.loading.set(false);
@@ -642,33 +583,26 @@ export class PosComponent implements OnInit {
     }
 
     this.comisionTerminal.set(porcentaje);
-    console.log('✅ Comisión de terminal actualizada:', porcentaje, '%');
+    this.carritoService.establecerComisionTerminal(porcentaje);
   }
 
-  // ✅ AGREGAR signals para modal de crear cliente
   protected readonly mostrarModalCrearCliente = signal(false);
 
-  // ✅ AGREGAR método para abrir modal de crear cliente
   protected abrirModalCrearCliente(): void {
     this.mostrarModalCrearCliente.set(true);
-    console.log('✅ Modal de crear cliente abierto desde POS');
   }
 
-  // ✅ AGREGAR método para cerrar modal de crear cliente
   protected cerrarModalCrearCliente(): void {
     this.mostrarModalCrearCliente.set(false);
   }
 
-  // ✅ AGREGAR método para guardar cliente nuevo
   protected guardarClienteNuevo(datos: any): void {
     this.clientesService.crearCliente(datos).subscribe({
       next: (clienteCreado) => {
         console.log('✅ Cliente creado desde POS:', clienteCreado);
 
-        // Recargar lista de clientes
         this.cargarClientes();
 
-        // Seleccionar automáticamente el cliente recién creado
         setTimeout(() => {
           const cliente = this.todosLosClientes().find(
             (c) => c._id === clienteCreado._id
@@ -679,7 +613,6 @@ export class PosComponent implements OnInit {
           }
         }, 300);
 
-        // Cerrar modal
         this.cerrarModalCrearCliente();
       },
       error: (err) => {

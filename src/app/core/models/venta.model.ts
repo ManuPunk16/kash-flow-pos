@@ -1,5 +1,6 @@
 import { MetodoPago, EstadoVenta } from '@core/enums';
 
+// ✅ Interface de item de venta
 export interface ItemVenta {
   productoId: string;
   nombreProducto: string;
@@ -12,13 +13,15 @@ export interface ItemVenta {
   proveedorId?: string;
 }
 
+// ✅ Interface principal de venta
 export interface Venta {
   _id: string;
   numeroVenta: string;
-  clienteId: string;
-  nombreCliente: string;
+  fechaVenta: Date | string;
   usuarioId: string;
   nombreUsuario: string;
+  clienteId?: string | null;
+  nombreCliente: string;
   items: ItemVenta[];
   subtotal: number;
   descuento: number;
@@ -30,54 +33,33 @@ export interface Venta {
   gananciaTotal: number;
   observaciones?: string;
   estado: EstadoVenta;
-  fechaVenta: Date;
-  fechaCreacion: Date;
+  fechaCreacion?: Date | string;
 }
 
-/**
- * DTO para registrar una nueva venta
- */
+// ✅ DTO para registrar venta (lo que envías al backend)
 export interface RegistrarVentaDTO {
-  clienteId?: string | null; // ✅ Puede ser null para efectivo/tarjeta
-
-  items: Array<{
-    productoId: string;
-    nombreProducto: string; // ✅ REQUERIDO
-    cantidad: number;
-    precioUnitario: number;
-    costoUnitario: number;
-    subtotal: number; // ✅ REQUERIDO
-    ganancia: number; // ✅ REQUERIDO
-    esConsignacion: boolean; // ✅ REQUERIDO
-  }>;
-
+  clienteId?: string | null;
+  items: ItemVenta[];
   metodoPago: MetodoPago;
   descuento?: number;
   observaciones?: string;
-
-  // ✅ OPCIONAL: Campos para pago con tarjeta
-  comisionTerminal?: number;
-  montoComision?: number;
+  referenciaPago?: string;
 }
 
-/**
- * Respuesta del servidor al listar ventas
- */
+// ✅ Interface para respuesta de lista paginada
 export interface RespuestaListaVentas {
   ventas: Venta[];
   total: number;
   pagina: number;
   limite: number;
+  totalPaginas: number;
 }
 
-/**
- * Filtros para búsqueda de ventas
- */
-export interface FiltrosVentas {
-  fechaInicio?: Date;
-  fechaFin?: Date;
-  clienteId?: string;
-  metodoPago?: MetodoPago;
-  estado?: EstadoVenta;
-  busqueda?: string;
+// ✅ Interface genérica de respuesta API
+export interface RespuestaAPI<T = any> {
+  exito: boolean;
+  mensaje?: string;
+  datos?: T;
+  dato?: T;
+  error?: string;
 }

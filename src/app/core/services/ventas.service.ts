@@ -1,26 +1,15 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, map, catchError, throwError } from 'rxjs';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import { map, catchError, tap } from 'rxjs/operators';
 import { environment } from '@environments/environment';
 import {
   Venta,
-  RegistrarVentaDTO,
   RespuestaListaVentas,
+  RespuestaAPI,
+  RegistrarVentaDTO,
 } from '@core/models/venta.model';
-
-// ✅ AGREGAR interface para respuesta SINGULAR
-interface RespuestaAPISingular<T> {
-  exito: boolean;
-  mensaje?: string;
-  dato?: T; // ✅ SINGULAR (backend usa "dato" en POST)
-}
-
-// Interface para respuestas con array
-interface RespuestaAPI<T> {
-  exito: boolean;
-  mensaje?: string;
-  datos?: T; // ✅ PLURAL (backend usa "datos" en GET)
-}
+import { MetodoPago } from '@core/enums';
 
 @Injectable({
   providedIn: 'root',
@@ -30,134 +19,232 @@ export class VentasService {
   private readonly apiUrl = `${environment.apiUrl}/ventas`;
 
   /**
-   * Registrar una nueva venta
+   * ✅ Registrar nueva venta
    */
   registrarVenta(ventaDTO: RegistrarVentaDTO): Observable<Venta> {
-    return this.http
-      .post<RespuestaAPISingular<Venta>>(this.apiUrl, ventaDTO) // ✅ USAR RespuestaAPISingular
-      .pipe(
-        map((respuesta) => {
-          if (respuesta.exito && respuesta.dato) {
-            // ✅ CAMBIAR datos → dato
-            console.log('✅ Venta registrada:', respuesta.dato);
-            return respuesta.dato;
-          }
-          throw new Error(respuesta.mensaje || 'Error al registrar venta');
-        }),
-        catchError((error) => {
-          console.error('❌ Error en el servicio de ventas:', error);
+    console.log('📤 [VentasService] Registrando venta:', ventaDTO);
 
-          // ✅ MEJORAR manejo de errores
-          const mensajeError =
-            error.error?.error || // Backend envía "error" en caso de fallo
-            error.error?.mensaje ||
-            error.message ||
-            'Error desconocido al registrar venta';
-
-          return throwError(() => new Error(mensajeError));
-        })
-      );
-  }
-
-  /**
-   * Obtener todas las ventas (con paginación opcional)
-   */
-  obtenerVentas(
-    pagina: number = 1,
-    limite: number = 20
-  ): Observable<RespuestaListaVentas> {
-    const url = `${this.apiUrl}?pagina=${pagina}&limite=${limite}`;
-
-    return this.http.get<RespuestaAPI<RespuestaListaVentas>>(url).pipe(
+    return this.http.post<RespuestaAPI<Venta>>(this.apiUrl, ventaDTO).pipe(
+      tap((respuesta) => {
+        console.log(
+          '📥 [VentasService] Respuesta venta registrada:',
+          respuesta
+        );
+      }),
       map((respuesta) => {
-        if (respuesta.exito && respuesta.datos) {
-          return respuesta.datos;
+        if (respuesta.exito && respuesta.dato) {
+          console.log('✅ [VentasService] Venta registrada:', respuesta.dato);
+          return respuesta.dato;
         }
-        throw new Error('Error al obtener ventas');
+
+        throw new Error(respuesta.error || 'Error al registrar venta');
       }),
       catchError((error) => {
-        console.error('❌ Error al obtener ventas:', error);
-        return throwError(() => error);
+        console.error('❌ [VentasService] Error al registrar venta:', error);
+
+        // Extraer mensaje de error del backend
+        const mensajeError =
+          error.error?.error ||
+          error.error?.mensaje ||
+          error.message ||
+          'Error al registrar la venta';
+
+        throw new Error(mensajeError);
       })
     );
   }
 
   /**
-   * Obtener ventas de un cliente específico
+   * ✅ Obtener ventas con filtros y paginación
    */
-  obtenerVentasPorCliente(clienteId: string): Observable<Venta[]> {
+  obtenerVentasConFiltros(filtros: {
+    pagina?: number;
+    limite?: number;
+    desde?: string;
+    hasta?: string;
+    usuarioId?: string;
+    metodoPago?: MetodoPago | 'todos';
+    clienteId?: string;
+  }): Observable<RespuestaListaVentas> {
+    // Construir parámetros HTTP
+    let params = new HttpParams();
+
+    if (filtros.pagina) {
+      params = params.set('pagina', filtros.pagina.toString());
+    }
+    if (filtros.limite) {
+      params = params.set('limite', filtros.limite.toString());
+    }
+    if (filtros.desde) {
+      params = params.set('desde', filtros.desde);
+    }
+    if (filtros.hasta) {
+      params = params.set('hasta', filtros.hasta);
+    }
+    if (filtros.usuarioId) {
+      params = params.set('usuarioId', filtros.usuarioId);
+    }
+    if (filtros.metodoPago && filtros.metodoPago !== 'todos') {
+      params = params.set('metodoPago', filtros.metodoPago);
+    }
+    if (filtros.clienteId) {
+      params = params.set('clienteId', filtros.clienteId);
+    }
+
+    console.log('📤 [VentasService] Solicitando ventas:', {
+      url: this.apiUrl,
+      params: params.toString(),
+      filtros,
+    });
+
     return this.http
-      .get<RespuestaAPI<Venta[]>>(`${this.apiUrl}/cliente/${clienteId}`)
+      .get<RespuestaAPI<RespuestaListaVentas>>(this.apiUrl, { params })
       .pipe(
+        tap((respuesta) => {
+          console.log('📥 [VentasService] Respuesta cruda:', respuesta);
+        }),
         map((respuesta) => {
+          // ✅ Validar estructura básica
+          if (!respuesta || typeof respuesta !== 'object') {
+            console.error('❌ Respuesta inválida:', respuesta);
+            throw new Error('Formato de respuesta inválido');
+          }
+
+          // ✅ CASO 1: Respuesta exitosa con datos
           if (respuesta.exito && respuesta.datos) {
-            return respuesta.datos;
+            const datos = respuesta.datos;
+
+            if (!datos.ventas || !Array.isArray(datos.ventas)) {
+              console.error('❌ datos.ventas no es array:', datos);
+              throw new Error('datos.ventas debe ser un array');
+            }
+
+            const resultado: RespuestaListaVentas = {
+              ventas: datos.ventas || [],
+              total: datos.total || 0,
+              pagina: datos.pagina || 1,
+              limite: datos.limite || 20,
+              totalPaginas: datos.totalPaginas || 0,
+            };
+
+            console.log('✅ [VentasService] Ventas procesadas:', {
+              cantidad: resultado.ventas.length,
+              total: resultado.total,
+              pagina: resultado.pagina,
+            });
+
+            return resultado;
           }
-          return [];
+
+          // ✅ CASO 2: Respuesta directa (array)
+          if (Array.isArray(respuesta)) {
+            console.warn('⚠️ Respuesta es array directo');
+            return {
+              ventas: respuesta,
+              total: respuesta.length,
+              pagina: 1,
+              limite: respuesta.length,
+              totalPaginas: 1,
+            };
+          }
+
+          // ✅ CASO 3: Respuesta con estructura { ventas, total }
+          if (
+            'ventas' in respuesta &&
+            Array.isArray((respuesta as any).ventas)
+          ) {
+            const r = respuesta as any;
+            return {
+              ventas: r.ventas,
+              total: r.total || r.ventas.length,
+              pagina: r.pagina || 1,
+              limite: r.limite || 20,
+              totalPaginas: r.totalPaginas || 1,
+            };
+          }
+
+          console.error('❌ Formato de respuesta no reconocido:', respuesta);
+          throw new Error('Formato de respuesta no soportado');
         }),
         catchError((error) => {
-          console.error('❌ Error al obtener ventas del cliente:', error);
-          return throwError(() => error);
+          console.error('❌ [VentasService] Error:', error);
+
+          if (error.status === 0) {
+            console.error('❌ Error de conexión (CORS o red)');
+          } else if (error.status >= 500) {
+            console.error('❌ Error del servidor:', error.message);
+          } else if (error.status >= 400) {
+            console.error('❌ Error del cliente:', error.error);
+          }
+
+          return of({
+            ventas: [],
+            total: 0,
+            pagina: 1,
+            limite: 20,
+            totalPaginas: 0,
+          });
         })
       );
   }
 
   /**
-   * Obtener ventas del día actual
+   * ✅ Obtener todas las ventas (sin filtros)
    */
-  obtenerVentasDelDia(): Observable<Venta[]> {
-    return this.http.get<RespuestaAPI<Venta[]>>(`${this.apiUrl}/hoy`).pipe(
+  obtenerTodasLasVentas(): Observable<Venta[]> {
+    return this.obtenerVentasConFiltros({}).pipe(
+      map((respuesta) => respuesta.ventas)
+    );
+  }
+
+  /**
+   * ✅ Obtener ventas de hoy
+   */
+  obtenerVentasDeHoy(): Observable<Venta[]> {
+    const hoy = new Date();
+    const inicio = new Date(hoy.setHours(0, 0, 0, 0)).toISOString();
+    const fin = new Date(hoy.setHours(23, 59, 59, 999)).toISOString();
+
+    return this.obtenerVentasConFiltros({
+      desde: inicio,
+      hasta: fin,
+    }).pipe(map((respuesta) => respuesta.ventas));
+  }
+
+  /**
+   * ✅ Obtener detalle de una venta
+   */
+  obtenerVentaPorId(id: string): Observable<Venta | null> {
+    return this.http.get<RespuestaAPI<Venta>>(`${this.apiUrl}/${id}`).pipe(
       map((respuesta) => {
-        if (respuesta.exito && respuesta.datos) {
-          return respuesta.datos;
+        if (respuesta.exito && respuesta.dato) {
+          return respuesta.dato;
         }
-        return [];
+        return null;
       }),
       catchError((error) => {
-        console.error('❌ Error al obtener ventas del día:', error);
-        return throwError(() => error);
+        console.error('❌ Error al obtener venta:', error);
+        return of(null);
       })
     );
   }
 
   /**
-   * Obtener una venta por ID
+   * ✅ Anular venta
    */
-  obtenerVentaPorId(ventaId: string): Observable<Venta> {
+  anularVenta(ventaId: string): Observable<Venta> {
     return this.http
-      .get<RespuestaAPISingular<Venta>>(`${this.apiUrl}/${ventaId}`) // ✅ USAR RespuestaAPISingular
+      .delete<RespuestaAPI<Venta>>(`${this.apiUrl}/${ventaId}`)
       .pipe(
         map((respuesta) => {
           if (respuesta.exito && respuesta.dato) {
-            // ✅ CAMBIAR datos → dato
             return respuesta.dato;
           }
-          throw new Error('Venta no encontrada');
+          throw new Error('Error al anular venta');
         }),
         catchError((error) => {
-          console.error('❌ Error al obtener venta:', error);
-          return throwError(() => error);
-        })
-      );
-  }
-
-  /**
-   * Cancelar una venta (marcar como cancelada)
-   */
-  cancelarVenta(ventaId: string, motivo?: string): Observable<void> {
-    return this.http
-      .delete<RespuestaAPI<void>>(`${this.apiUrl}/${ventaId}`, {
-        body: { motivo },
-      })
-      .pipe(
-        map((respuesta) => {
-          if (!respuesta.exito) {
-            throw new Error(respuesta.mensaje || 'Error al cancelar venta');
-          }
-        }),
-        catchError((error) => {
-          console.error('❌ Error al cancelar venta:', error);
-          return throwError(() => error);
+          console.error('❌ Error al anular venta:', error);
+          throw error;
         })
       );
   }

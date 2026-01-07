@@ -55,6 +55,7 @@ export class Sidebar implements OnInit, OnDestroy {
     },
     { ruta: '/clientes', icono: '👥', etiqueta: 'Clientes' },
     { ruta: '/proveedores', icono: '🏢', etiqueta: 'Proveedores' },
+    { ruta: '/ventas', icono: '🧾', etiqueta: 'Ventas' },
     { ruta: '/egresos', icono: '💸', etiqueta: 'Egresos' },
     { ruta: '/reportes', icono: '📈', etiqueta: 'Reportes' },
     { ruta: '/configuracion', icono: '⚙️', etiqueta: 'Configuración' },

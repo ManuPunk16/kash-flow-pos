@@ -1,0 +1,240 @@
+<div
+  class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+  (click)="cerrar()"
+>
+  <div
+    class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+    (click)="$event.stopPropagation()"
+  >
+    <!-- Header -->
+    <div
+      class="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10"
+    >
+      <div>
+        <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <span class="text-3xl">🧾</span>
+          <span>Detalle de Venta</span>
+        </h2>
+        <p class="text-sm text-gray-500 mt-1">
+          {{ venta().numeroVenta }} • {{ venta().fechaVenta | date: 'dd/MM/yyyy
+          HH:mm' }}
+        </p>
+      </div>
+
+      <button
+        (click)="cerrar()"
+        class="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-full"
+        title="Cerrar"
+      >
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          ></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="p-6 space-y-6">
+      <!-- Información General -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Cliente -->
+        <div class="bg-gray-50 rounded-lg p-4">
+          <p class="text-sm text-gray-600 mb-1">👤 Cliente</p>
+          <p class="text-lg font-bold text-gray-900">
+            {{ venta().nombreCliente }}
+          </p>
+        </div>
+
+        <!-- Método de Pago -->
+        <div class="bg-gray-50 rounded-lg p-4">
+          <p class="text-sm text-gray-600 mb-1">💳 Método de Pago</p>
+          <span
+            [class]="'inline-block px-3 py-1 rounded-full text-sm font-semibold ' + obtenerColorMetodoPago(venta().metodoPago)"
+          >
+            {{ obtenerIconoMetodoPago(venta().metodoPago) }} {{
+            venta().metodoPago | titlecase }}
+          </span>
+        </div>
+
+        <!-- Vendedor -->
+        <div class="bg-gray-50 rounded-lg p-4">
+          <p class="text-sm text-gray-600 mb-1">👨‍💼 Vendedor</p>
+          <p class="text-lg font-semibold text-gray-900">
+            {{ venta().nombreUsuario }}
+          </p>
+        </div>
+
+        <!-- Estado -->
+        <div class="bg-gray-50 rounded-lg p-4">
+          <p class="text-sm text-gray-600 mb-1">📊 Estado</p>
+          <span
+            class="inline-block px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800"
+          >
+            ✅ Completada
+          </span>
+        </div>
+      </div>
+
+      <!-- Items de la Venta -->
+      <div>
+        <h3
+          class="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2"
+        >
+          <span>📦</span>
+          <span>Productos ({{ venta().items.length }})</span>
+        </h3>
+
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <table class="w-full">
+            <thead class="bg-gray-50">
+              <tr>
+                <th
+                  class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase"
+                >
+                  Producto
+                </th>
+                <th
+                  class="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase"
+                >
+                  Cantidad
+                </th>
+                <th
+                  class="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase"
+                >
+                  P. Unitario
+                </th>
+                <th
+                  class="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase"
+                >
+                  Subtotal
+                </th>
+                <th
+                  class="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase"
+                >
+                  Ganancia
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              @for (item of venta().items; track item.productoId) {
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3">
+                  <div>
+                    <p class="font-semibold text-gray-900">
+                      {{ item.nombreProducto }}
+                    </p>
+                    @if (item.esConsignacion) {
+                    <span
+                      class="inline-block px-2 py-0.5 bg-orange-100 text-orange-800 text-xs rounded-full mt-1"
+                    >
+                      🏷️ Consignación
+                    </span>
+                    }
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-center font-semibold text-gray-900">
+                  {{ item.cantidad }}
+                </td>
+                <td class="px-4 py-3 text-right text-gray-700">
+                  ${{ item.precioUnitario.toLocaleString('es-MX') }}
+                </td>
+                <td class="px-4 py-3 text-right font-bold text-green-600">
+                  ${{ item.subtotal.toLocaleString('es-MX') }}
+                </td>
+                <td class="px-4 py-3 text-right font-semibold text-purple-600">
+                  ${{ item.ganancia.toLocaleString('es-MX') }}
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Totales -->
+      <div class="bg-gray-50 rounded-lg p-6">
+        <div class="space-y-3">
+          <!-- Subtotal -->
+          <div class="flex items-center justify-between">
+            <span class="text-gray-700">Subtotal:</span>
+            <span class="text-lg font-semibold text-gray-900">
+              ${{ venta().subtotal.toLocaleString('es-MX') }}
+            </span>
+          </div>
+
+          <!-- Descuento -->
+          @if (venta().descuento > 0) {
+          <div class="flex items-center justify-between text-red-600">
+            <span>Descuento:</span>
+            <span class="text-lg font-semibold">
+              -${{ venta().descuento.toLocaleString('es-MX') }}
+            </span>
+          </div>
+          }
+
+          <!-- Total -->
+          <div
+            class="flex items-center justify-between pt-3 border-t-2 border-gray-300"
+          >
+            <span class="text-xl font-bold text-gray-900">Total:</span>
+            <span class="text-2xl font-black text-green-600">
+              ${{ venta().total.toLocaleString('es-MX') }}
+            </span>
+          </div>
+
+          <!-- Ganancia Total -->
+          <div
+            class="flex items-center justify-between pt-3 border-t border-gray-300"
+          >
+            <span class="text-lg font-semibold text-gray-700">
+              Ganancia Total:
+            </span>
+            <span class="text-xl font-bold text-purple-600">
+              ${{ venta().gananciaTotal.toLocaleString('es-MX') }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Observaciones -->
+      @if (venta().observaciones) {
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <p class="text-sm font-semibold text-yellow-900 mb-1">
+          📝 Observaciones:
+        </p>
+        <p class="text-sm text-yellow-800">{{ venta().observaciones }}</p>
+      </div>
+      }
+    </div>
+
+    <!-- Footer -->
+    <div
+      class="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50"
+    >
+      <button
+        (click)="cerrar()"
+        class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors"
+      >
+        Cerrar
+      </button>
+
+      <!-- Botón de Reimprimir (futuro) -->
+      <button
+        disabled
+        class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors opacity-50 cursor-not-allowed"
+        title="Próximamente"
+      >
+        🖨️ Reimprimir Ticket
+      </button>
+    </div>
+  </div>
+</div>

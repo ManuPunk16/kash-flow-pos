@@ -57,6 +57,11 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'ventas',
+        loadComponent: () =>
+          import('@features/ventas/ventas').then((m) => m.Ventas),
+      },
+      {
         path: 'reportes',
         loadComponent: () =>
           import('@features/reportes/reportes').then((m) => m.Reportes),

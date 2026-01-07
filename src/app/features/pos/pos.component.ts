@@ -17,6 +17,7 @@ import { ItemCarrito, productoAItemCarrito } from '@core/models/carrito.model';
 import { Cliente } from '@core/models/cliente.model';
 import { MetodoPago } from '@core/enums';
 import { RegistrarVentaDTO } from '@core/models/venta.model';
+import { ModalClienteComponent } from '@features/clientes/modal-cliente/modal-cliente';
 
 interface RespuestaAPI<T> {
   exito: boolean;
@@ -26,7 +27,7 @@ interface RespuestaAPI<T> {
 
 @Component({
   selector: 'app-pos',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ModalClienteComponent],
   templateUrl: './pos.component.html',
   styleUrl: './pos.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -642,5 +643,49 @@ export class PosComponent implements OnInit {
 
     this.comisionTerminal.set(porcentaje);
     console.log('✅ Comisión de terminal actualizada:', porcentaje, '%');
+  }
+
+  // ✅ AGREGAR signals para modal de crear cliente
+  protected readonly mostrarModalCrearCliente = signal(false);
+
+  // ✅ AGREGAR método para abrir modal de crear cliente
+  protected abrirModalCrearCliente(): void {
+    this.mostrarModalCrearCliente.set(true);
+    console.log('✅ Modal de crear cliente abierto desde POS');
+  }
+
+  // ✅ AGREGAR método para cerrar modal de crear cliente
+  protected cerrarModalCrearCliente(): void {
+    this.mostrarModalCrearCliente.set(false);
+  }
+
+  // ✅ AGREGAR método para guardar cliente nuevo
+  protected guardarClienteNuevo(datos: any): void {
+    this.clientesService.crearCliente(datos).subscribe({
+      next: (clienteCreado) => {
+        console.log('✅ Cliente creado desde POS:', clienteCreado);
+
+        // Recargar lista de clientes
+        this.cargarClientes();
+
+        // Seleccionar automáticamente el cliente recién creado
+        setTimeout(() => {
+          const cliente = this.todosLosClientes().find(
+            (c) => c._id === clienteCreado._id
+          );
+          if (cliente) {
+            this.seleccionarCliente(cliente);
+            this.mostrarAlerta('✅ Cliente creado y seleccionado');
+          }
+        }, 300);
+
+        // Cerrar modal
+        this.cerrarModalCrearCliente();
+      },
+      error: (err) => {
+        console.error('❌ Error al crear cliente desde POS:', err);
+        this.mostrarAlerta(`❌ Error: ${err.message}`);
+      },
+    });
   }
 }

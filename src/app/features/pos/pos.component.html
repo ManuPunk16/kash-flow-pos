@@ -107,7 +107,6 @@
             [class.opacity-50]="!puedeAgregarMas(producto)"
             [class.cursor-not-allowed]="!puedeAgregarMas(producto)"
           >
-            <!-- ✅ Badge de cantidad en carrito -->
             @if (obtenerCantidadEnCarrito(producto._id) > 0) {
             <span
               class="absolute -top-2 -right-2 bg-blue-600 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center shadow-md z-10"
@@ -594,6 +593,89 @@
               }
             </div>
 
+            @if (metodoPago() === 'efectivo') {
+            <div
+              class="mt-3 p-4 bg-green-50 border border-green-200 rounded-lg"
+            >
+              <label
+                class="text-sm font-semibold text-green-800 mb-2 flex items-center gap-2"
+              >
+                <span>💵</span>
+                <span>Monto Pagado (Opcional)</span>
+              </label>
+
+              <div class="flex items-center gap-3">
+                <span class="text-green-700 font-bold text-lg">$</span>
+                <input
+                  type="number"
+                  [value]="montoPagadoEfectivo()"
+                  (input)="actualizarMontoPagadoEfectivo($event)"
+                  min="0"
+                  step="100"
+                  placeholder="0.00"
+                  class="flex-1 px-4 py-2 border-2 border-green-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all text-right font-semibold"
+                />
+                <button
+                  (click)="aplicarMontoExacto()"
+                  class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                  title="Aplicar monto exacto"
+                >
+                  Exacto
+                </button>
+              </div>
+
+              <!-- Mostrar Cambio -->
+              @if (montoPagadoEfectivo() > 0) {
+              <div class="mt-3 space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span class="text-green-700">Total a pagar:</span>
+                  <span class="font-bold text-green-800"
+                    >${{ totalFinal().toLocaleString("es-MX") }}</span
+                  >
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-green-700">Monto pagado:</span>
+                  <span class="font-bold text-green-800"
+                    >${{ montoPagadoEfectivo().toLocaleString("es-MX") }}</span
+                  >
+                </div>
+                <div
+                  class="flex justify-between text-base border-t border-green-300 pt-2"
+                >
+                  <span class="font-semibold text-green-800">Cambio:</span>
+                  <span
+                    class="text-xl font-black"
+                    [class.text-green-600]="cambioEfectivo() >= 0"
+                    [class.text-red-600]="cambioEfectivo() < 0"
+                  >
+                    ${{ cambioEfectivo().toLocaleString("es-MX") }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Alerta si el monto es insuficiente -->
+              @if (montoPagadoEfectivo() > 0 && !esMontoPagadoSuficiente()) {
+              <div
+                class="mt-2 flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800"
+              >
+                <span>⚠️</span>
+                <span
+                  >Monto insuficiente. Faltan ${{
+                    (totalFinal() - montoPagadoEfectivo()).toLocaleString(
+                      "es-MX"
+                    )
+                  }}</span
+                >
+              </div>
+              } }
+
+              <p class="text-xs text-green-600 mt-2">
+                💡 Deja en blanco si no necesitas calcular el cambio
+              </p>
+            </div>
+            }
+
+            <!-- Input de comisión si es TARJETA -->
             @if (metodoPago() === 'tarjeta') {
             <div class="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <label
@@ -707,10 +789,8 @@
                   >-${{ descuento().toLocaleString("es-MX") }}</span
                 >
               </div>
-              }
-
-              <!-- ✅ AGREGAR ESTE BLOQUE COMPLETO AQUÍ -->
-              @if (metodoPago() === 'tarjeta' && montoComisionTerminal() > 0) {
+              } @if (metodoPago() === 'tarjeta' && montoComisionTerminal() > 0)
+              {
               <div class="flex justify-between text-base text-orange-600">
                 <span>Comisión Terminal ({{ comisionTerminal() }}%):</span>
                 <span class="font-semibold"
@@ -726,7 +806,6 @@
                   >TOTAL A PAGAR:</span
                 >
                 <span class="text-3xl font-black text-green-600">
-                  <!-- ✅ CAMBIAR totalConDescuento() por totalFinal() -->
                   ${{ totalFinal().toLocaleString("es-MX") }}
                 </span>
               </div>
@@ -737,7 +816,6 @@
               >
                 <span>Nuevo saldo del cliente:</span>
                 <span class="font-bold">
-                  <!-- ✅ CAMBIAR totalConDescuento() por totalFinal() -->
                   ${{
                     (
                       clienteSeleccionado()!.saldoActual + totalFinal()

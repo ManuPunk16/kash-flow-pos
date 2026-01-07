@@ -74,7 +74,6 @@ export class PosComponent implements OnInit {
         })
       : this.todosLosProductos();
 
-    // ✅ AGREGAR paginación
     const inicio = (this.paginaActual() - 1) * this.productosPorPagina();
     const fin = inicio + this.productosPorPagina();
 
@@ -90,12 +89,10 @@ export class PosComponent implements OnInit {
     this.carrito().reduce((sum, item) => sum + item.cantidad, 0)
   );
 
-  // ✅ AGREGAR después del computed total
   protected readonly gananciaTotal = computed(() =>
     this.carrito().reduce((sum, item) => sum + item.ganancia, 0)
   );
 
-  // ✅ AGREGAR computed para ganancia por item (opcional pero útil)
   protected readonly gananciaPorItem = computed(() =>
     this.carrito().map((item) => ({
       productoId: item.productoId,
@@ -108,7 +105,6 @@ export class PosComponent implements OnInit {
     }))
   );
 
-  // ✅ AGREGAR computed para filtrar clientes
   protected readonly clientesFiltrados = computed(() => {
     const termino = this.busquedaCliente().toLowerCase().trim();
 
@@ -126,7 +122,7 @@ export class PosComponent implements OnInit {
           nombreCompleto.includes(termino) || identificacion.includes(termino)
         );
       })
-      .slice(0, 10); // Limitar a 10 resultados
+      .slice(0, 10);
   });
 
   protected readonly metodoPago = signal<MetodoPago>(MetodoPago.EFECTIVO);
@@ -142,6 +138,20 @@ export class PosComponent implements OnInit {
 
   protected readonly comisionTerminal = signal(3.5);
   protected readonly mostrarInputComision = signal(false);
+
+  protected readonly montoPagadoEfectivo = signal(0);
+
+  protected readonly cambioEfectivo = computed(() => {
+    if (this.metodoPago() !== MetodoPago.EFECTIVO) return 0;
+    const montoPagado = this.montoPagadoEfectivo();
+    const totalAPagar = this.totalFinal();
+    return Math.max(0, montoPagado - totalAPagar);
+  });
+
+  protected readonly esMontoPagadoSuficiente = computed(() => {
+    if (this.metodoPago() !== MetodoPago.EFECTIVO) return true;
+    return this.montoPagadoEfectivo() >= this.totalFinal();
+  });
 
   protected readonly totalConDescuento = computed(() => {
     const subtotal = this.total();
@@ -397,7 +407,6 @@ export class PosComponent implements OnInit {
     return item?.cantidad || 0;
   }
 
-  // ✅ AGREGAR métodos de interacción con cliente
   protected actualizarBusquedaCliente(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.busquedaCliente.set(input.value);
@@ -422,28 +431,46 @@ export class PosComponent implements OnInit {
     setTimeout(() => this.mostrarListaClientes.set(false), 200);
   }
 
-  // ✅ AGREGAR método
   protected cambiarMetodoPago(metodo: MetodoPago): void {
     this.metodoPago.set(metodo);
 
-    // ⚠️ Si cambia a FIADO y no hay cliente, alertar
     if (metodo === MetodoPago.FIADO && !this.clienteSeleccionado()) {
       this.mostrarAlerta(
         '⚠️ Debes seleccionar un cliente para venta a crédito'
       );
     }
 
-    // ✅ Si cambia a TARJETA, mostrar input de comisión
     if (metodo === MetodoPago.TARJETA) {
       this.mostrarInputComision.set(true);
     } else {
       this.mostrarInputComision.set(false);
     }
 
+    if (metodo === MetodoPago.EFECTIVO) {
+      this.montoPagadoEfectivo.set(0);
+    }
+
     console.log('✅ Método de pago cambiado a:', metodo);
   }
 
-  // ✅ AGREGAR método
+  protected actualizarMontoPagadoEfectivo(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const monto = parseFloat(input.value) || 0;
+
+    if (monto < 0) {
+      this.mostrarAlerta('⚠️ El monto no puede ser negativo');
+      this.montoPagadoEfectivo.set(0);
+      return;
+    }
+
+    this.montoPagadoEfectivo.set(monto);
+    console.log('✅ Monto pagado actualizado:', monto);
+  }
+
+  protected aplicarMontoExacto(): void {
+    this.montoPagadoEfectivo.set(this.totalFinal());
+  }
+
   protected aplicarDescuento(monto: number): void {
     if (monto < 0) {
       this.mostrarAlerta('⚠️ El descuento no puede ser negativo');
@@ -461,17 +488,14 @@ export class PosComponent implements OnInit {
     console.log('✅ Descuento aplicado: $', monto);
   }
 
-  // ✅ AGREGAR método para input
   protected actualizarDescuento(event: Event): void {
     const input = event.target as HTMLInputElement;
     const monto = parseFloat(input.value) || 0;
     this.aplicarDescuento(monto);
   }
 
-  // ✅ AGREGAR signal para controlar el modal
   protected readonly mostrarModalVenta = signal(false);
 
-  // ✅ MODIFICAR método del botón "Finalizar Venta"
   protected abrirModalVenta(): void {
     if (this.carrito().length === 0) {
       this.mostrarAlerta('⚠️ El carrito está vacío');
@@ -482,7 +506,6 @@ export class PosComponent implements OnInit {
     console.log('✅ Modal de venta abierto');
   }
 
-  // ✅ AGREGAR método para cerrar modal
   protected cerrarModalVenta(): void {
     if (this.loading()) {
       this.mostrarAlerta('⚠️ Espera a que termine el proceso');
@@ -493,7 +516,6 @@ export class PosComponent implements OnInit {
     console.log('❌ Modal de venta cerrado');
   }
 
-  // ✅ RENOMBRAR método finalizarVenta() a confirmarVenta()
   protected confirmarVenta(): void {
     // Validaciones
     if (!this.puedeFinalizarVenta()) {
@@ -501,27 +523,31 @@ export class PosComponent implements OnInit {
       return;
     }
 
+    if (
+      this.metodoPago() === MetodoPago.EFECTIVO &&
+      !this.esMontoPagadoSuficiente()
+    ) {
+      this.mostrarAlerta('⚠️ El monto pagado es insuficiente');
+      return;
+    }
+
     this.loading.set(true);
 
-    // ✅ CONSTRUIR DTO COMPLETO CON TODOS LOS CAMPOS REQUERIDOS
     const ventaDTO: RegistrarVentaDTO = {
       clienteId: this.clienteSeleccionado()?._id || null,
-
-      // ✅ ENVIAR TODOS LOS CAMPOS QUE EL BACKEND REQUIERE
       items: this.carrito().map((item) => ({
         productoId: item.productoId,
-        nombreProducto: item.nombreProducto, // ✅ AGREGAR
+        nombreProducto: item.nombreProducto,
         cantidad: item.cantidad,
         precioUnitario: item.precioUnitario,
         costoUnitario: item.costoUnitario,
-        subtotal: item.subtotal, // ✅ AGREGAR
-        ganancia: item.ganancia, // ✅ AGREGAR
-        esConsignacion: item.esConsignacion, // ✅ AGREGAR
+        subtotal: item.subtotal,
+        ganancia: item.ganancia,
+        esConsignacion: item.esConsignacion,
       })),
-
       metodoPago: this.metodoPago(),
       descuento: this.descuento(),
-      observaciones: '', // ✅ AGREGAR campo vacío
+      observaciones: '',
     };
 
     console.log('📤 Enviando DTO de venta:', JSON.stringify(ventaDTO, null, 2));
@@ -529,7 +555,19 @@ export class PosComponent implements OnInit {
     this.ventasService.registrarVenta(ventaDTO).subscribe({
       next: (venta) => {
         console.log('✅ Venta registrada:', venta);
-        this.mostrarAlerta('✅ Venta registrada exitosamente');
+
+        if (
+          this.metodoPago() === MetodoPago.EFECTIVO &&
+          this.cambioEfectivo() > 0
+        ) {
+          this.mostrarAlerta(
+            `✅ Venta registrada. Cambio: $${this.cambioEfectivo().toLocaleString(
+              'es-MX'
+            )}`
+          );
+        } else {
+          this.mostrarAlerta('✅ Venta registrada exitosamente');
+        }
 
         // Limpiar carrito y resetear estado
         this.limpiarCarrito();
@@ -539,22 +577,19 @@ export class PosComponent implements OnInit {
         this.mostrarModalVenta.set(false);
         this.comisionTerminal.set(3.5);
         this.mostrarInputComision.set(false);
+        this.montoPagadoEfectivo.set(0);
 
         // Recargar productos (actualizar stock)
         this.cargarProductos();
       },
       error: (error) => {
         console.error('❌ Error al registrar venta:', error);
-
-        // ✅ MENSAJE DE ERROR MÁS DETALLADO
         const mensajeError =
           error.error?.mensaje ||
           error.error?.error ||
           error.message ||
           'Error desconocido';
         this.mostrarAlerta(`❌ Error: ${mensajeError}`);
-
-        // ✅ DEBUG: Mostrar DTO enviado vs error recibido
         console.log('📋 DTO enviado:', JSON.stringify(ventaDTO, null, 2));
         console.log('📋 Error completo:', JSON.stringify(error, null, 2));
       },
@@ -564,7 +599,6 @@ export class PosComponent implements OnInit {
     });
   }
 
-  // ✅ AGREGAR métodos de navegación
   protected paginaAnterior(): void {
     if (this.paginaActual() > 1) {
       this.paginaActual.update((p) => p - 1);
@@ -590,7 +624,6 @@ export class PosComponent implements OnInit {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // ✅ AGREGAR método actualizarComisionTerminal (después de línea ~420)
   protected actualizarComisionTerminal(event: Event): void {
     const input = event.target as HTMLInputElement;
     const porcentaje = parseFloat(input.value) || 0;

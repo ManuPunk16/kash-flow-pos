@@ -16,6 +16,7 @@ export interface Cliente {
   activo: boolean;
   fechaCreacion: string;
   fechaActualizacion: string;
+  limiteCredito?: number;
 }
 
 export interface HistoricoInteres {

@@ -44,22 +44,71 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
 
     switch (req.method) {
       case 'GET':
-        // GET /api/ventas
+        // ✅ GET /api/ventas - Lista con paginación y filtros
         if (rutaVenta === '/' || rutaVenta === '') {
-          const ventas = await Venta.find()
-            .sort({ fechaVenta: -1 })
-            .limit(100)
-            .lean();
+          const { searchParams } = new URL(
+            req.url || '',
+            `http://${req.headers.host}`
+          );
 
+          // ✅ Parámetros de paginación
+          const pagina = parseInt(searchParams.get('pagina') || '1', 10);
+          const limite = parseInt(searchParams.get('limite') || '20', 10);
+          const skip = (pagina - 1) * limite;
+
+          // ✅ Filtros opcionales
+          const desde = searchParams.get('desde');
+          const hasta = searchParams.get('hasta');
+          const metodoPago = searchParams.get('metodoPago');
+          const usuarioId = searchParams.get('usuarioId');
+          const clienteId = searchParams.get('clienteId');
+
+          // ✅ Construir query
+          const query: any = {};
+
+          if (desde || hasta) {
+            query.fechaVenta = {};
+            if (desde) query.fechaVenta.$gte = new Date(desde);
+            if (hasta) query.fechaVenta.$lte = new Date(hasta);
+          }
+
+          if (metodoPago && esMetodoPagoValido(metodoPago)) {
+            query.metodoPago = metodoPago;
+          }
+
+          if (usuarioId) {
+            query.usuarioId = usuarioId;
+          }
+
+          if (clienteId) {
+            query.clienteId = clienteId;
+          }
+
+          // ✅ Consultar ventas con paginación
+          const [ventas, total] = await Promise.all([
+            Venta.find(query)
+              .sort({ fechaVenta: -1 })
+              .skip(skip)
+              .limit(limite)
+              .lean(),
+            Venta.countDocuments(query),
+          ]);
+
+          // ✅ Respuesta con estructura de paginación
           res.status(200).json({
             exito: true,
-            datos: ventas,
-            cantidad: ventas.length,
+            datos: {
+              ventas,
+              total,
+              pagina,
+              limite,
+              totalPaginas: Math.ceil(total / limite),
+            },
           });
           return;
         }
 
-        // GET /api/ventas/:id
+        // GET /api/ventas/:id - Detalle de venta
         const ventaId = rutaVenta.replace('/', '');
         if (ventaId && /^[0-9a-fA-F]{24}$/.test(ventaId)) {
           const venta = await Venta.findById(ventaId).lean();
@@ -89,7 +138,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         const { clienteId, items, metodoPago, descuento, observaciones } =
           req.body;
 
-        // ✅ Validar método de pago usando enum
+        // Validar método de pago
         if (!metodoPago || !esMetodoPagoValido(metodoPago)) {
           res.status(400).json({
             exito: false,
@@ -99,7 +148,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        // ✅ CAMBIAR: clienteId solo es obligatorio para FIADO
+        // Cliente obligatorio solo para fiado
         if (metodoPago === MetodoPago.FIADO && !clienteId) {
           res.status(400).json({
             exito: false,
@@ -117,7 +166,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        // ✅ CAMBIAR: Cliente puede ser null para efectivo/tarjeta
+        // Cliente puede ser null para efectivo/tarjeta
         let cliente: any = null;
         let nombreCliente = 'Cliente de mostrador';
 
@@ -184,10 +233,10 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        // Registrar saldo anterior (solo si hay cliente)
+        // Registrar saldo anterior
         const saldoAnterior = cliente?.saldoActual || 0;
 
-        // ✅ Actualizar saldo si es fiado (usando enum)
+        // Actualizar saldo si es fiado
         if (metodoPago === MetodoPago.FIADO && cliente) {
           cliente.saldoActual += total;
           cliente.saldoHistorico += total;
@@ -195,10 +244,10 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           await cliente.save();
         }
 
-        // ✅ Crear venta (clienteId puede ser null)
+        // Crear venta
         const nuevaVenta = new Venta({
           numeroVenta,
-          clienteId: clienteId || null, // ✅ Permitir null
+          clienteId: clienteId || null,
           nombreCliente,
           usuarioId: usuario._id,
           nombreUsuario: `${usuario.nombre} ${usuario.apellido}`,
@@ -252,7 +301,6 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        // ✅ Verificar estado (usando enum)
         if (ventaAnular.estado === EstadoVenta.ANULADA) {
           res.status(400).json({
             exito: false,
@@ -268,7 +316,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           });
         }
 
-        // ✅ Si era fiado, revertir saldo (usando enum)
+        // Si era fiado, revertir saldo
         if (ventaAnular.metodoPago === MetodoPago.FIADO) {
           await Cliente.findByIdAndUpdate(ventaAnular.clienteId, {
             $inc: {
@@ -278,7 +326,6 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           });
         }
 
-        // ✅ Actualizar estado (usando enum)
         ventaAnular.estado = EstadoVenta.ANULADA;
         await ventaAnular.save();
 

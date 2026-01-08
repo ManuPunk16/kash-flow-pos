@@ -1,4 +1,5 @@
 import { Proveedor } from './proveedor.model';
+import { CategoriaProducto } from '@core/enums'; // ✅ IMPORTAR DESDE ENUM
 
 export interface Producto {
   _id: string;
@@ -11,25 +12,14 @@ export interface Producto {
   stockMinimo: number;
   esConsignacion: boolean;
   proveedorId?: string;
-  proveedor?: Proveedor; // ✅ NUEVO: Información completa del proveedor (populated)
-  categoria: CategoriaProducto;
+  proveedor?: Proveedor;
+  categoria: CategoriaProducto; // ✅ USA EL ENUM IMPORTADO
   activo: boolean;
   imagen?: string;
   pendienteCompletarDatos?: boolean;
   fechaCreacion: string;
   fechaActualizacion: string;
 }
-
-export type CategoriaProducto =
-  | 'bebidas'
-  | 'lacteos'
-  | 'panaderia'
-  | 'carnes'
-  | 'frutas-verduras'
-  | 'abarrotes'
-  | 'limpieza'
-  | 'higiene-personal'
-  | 'otros';
 
 export interface FiltrosInventario {
   busqueda?: string;
@@ -50,7 +40,7 @@ export interface CrearProductoDTO {
   stockMinimo: number;
   esConsignacion: boolean;
   proveedorId?: string;
-  categoria: CategoriaProducto;
+  categoria: CategoriaProducto; // ✅ USA EL ENUM
   imagen?: string;
 }
 
@@ -63,9 +53,8 @@ export interface RespuestaListaProductos {
   limite: number;
 }
 
-// ✅ NUEVO: Configuración para generación de códigos de barras
 export interface ConfiguracionCodigoBarras {
-  prefijo: string; // Ej: 'KASH'
-  longitudNumero: number; // Ej: 8
+  prefijo: string;
+  longitudNumero: number;
   incluirChecksum: boolean;
 }

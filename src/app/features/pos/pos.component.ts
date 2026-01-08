@@ -8,21 +8,30 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+
+// ✅ SERVICIOS
 import { ProductosService } from '@core/services/productos.service';
 import { AuthService } from '@core/services/auth.service';
 import { ClientesService } from '@core/services/clientes.service';
 import { VentasService } from '@core/services/ventas.service';
 import { CarritoService } from '@core/services/carrito.service';
+
+// ✅ MODELOS (SIN ENUMS)
 import { Producto } from '@core/models/producto.model';
 import { ItemCarrito, productoAItemCarrito } from '@core/models/carrito.model';
 import { Cliente } from '@core/models/cliente.model';
-import { MetodoPago } from '@core/enums';
 import { RegistrarVentaDTO } from '@core/models/venta.model';
-import { ModalClienteComponent } from '@features/clientes/modal-cliente/modal-cliente';
+
+// ✅ ENUMS (DESDE UN SOLO LUGAR)
 import {
   CategoriaProducto,
   CATEGORIAS_PRODUCTO_CATALOGO,
-} from '@core/enums/categorias-producto.enum';
+  obtenerInfoCategoria,
+  MetodoPago,
+} from '@core/enums';
+
+// ✅ COMPONENTES
+import { ModalClienteComponent } from '@features/clientes/modal-cliente/modal-cliente';
 
 interface RespuestaAPI<T> {
   exito: boolean;
@@ -44,22 +53,16 @@ export class PosComponent implements OnInit {
   private readonly ventasService = inject(VentasService);
   private readonly carritoService = inject(CarritoService);
 
-  // 🔥 Estado con signals
   private readonly todosLosProductos = signal<Producto[]>([]);
   protected readonly terminoBusqueda = signal('');
-
-  // ✅ NUEVO: Filtro de categoría
   protected readonly categoriaSeleccionada = signal<
     CategoriaProducto | 'todas'
   >('todas');
-
-  // ✅ NUEVO: Modal de carrito móvil
   protected readonly mostrarCarritoMovil = signal(false);
 
   protected readonly carrito = computed(() =>
     this.carritoService.obtenerItems()
   );
-
   protected readonly clienteSeleccionado = signal<Cliente | null>(null);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -72,24 +75,20 @@ export class PosComponent implements OnInit {
     () => this.authService.obtenerUsuarioActual()?.email || 'Usuario'
   );
 
-  // ✅ NUEVO: Catálogo de categorías para UI
   protected readonly CATEGORIAS = [
     { valor: 'todas' as const, etiqueta: 'Todas', emoji: '🛒' },
     ...CATEGORIAS_PRODUCTO_CATALOGO,
   ];
 
-  // 🔍 Productos filtrados por búsqueda Y categoría
   protected readonly productosFiltrados = computed(() => {
     const termino = this.terminoBusqueda().toLowerCase().trim();
     const categoria = this.categoriaSeleccionada();
     let resultado = this.todosLosProductos();
 
-    // Filtrar por categoría
     if (categoria !== 'todas') {
       resultado = resultado.filter((p) => p.categoria === categoria);
     }
 
-    // Filtrar por búsqueda
     if (termino) {
       resultado = resultado.filter((producto) => {
         const nombreCoincide = producto.nombre.toLowerCase().includes(termino);
@@ -103,7 +102,6 @@ export class PosComponent implements OnInit {
     return resultado;
   });
 
-  // ✅ MEJORADO: Productos con paginación
   protected readonly productos = computed(() => {
     const productosFiltrados = this.productosFiltrados();
     const inicio = (this.paginaActual() - 1) * this.productosPorPagina();
@@ -111,7 +109,6 @@ export class PosComponent implements OnInit {
     return productosFiltrados.slice(inicio, fin);
   });
 
-  // 🧮 Estado derivado - ✅ Usar computed del servicio
   protected readonly total = computed(() => this.carritoService.subtotal());
   protected readonly cantidadItems = computed(() =>
     this.carritoService.cantidadItems()
@@ -156,7 +153,6 @@ export class PosComponent implements OnInit {
         const nombreCompleto =
           `${cliente.nombre} ${cliente.apellido}`.toLowerCase();
         const identificacion = cliente.identificacion?.toLowerCase() || '';
-
         return (
           nombreCompleto.includes(termino) || identificacion.includes(termino)
         );
@@ -213,7 +209,6 @@ export class PosComponent implements OnInit {
     return true;
   });
 
-  // ✅ MEJORADO: Paginación más robusta
   protected readonly paginaActual = signal(1);
   protected readonly productosPorPagina = signal(20);
 
@@ -227,7 +222,6 @@ export class PosComponent implements OnInit {
     return total > 0 ? Math.ceil(total / porPagina) : 0;
   });
 
-  // ✅ NUEVO: Math para template
   protected readonly Math = Math;
 
   ngOnInit(): void {
@@ -278,7 +272,7 @@ export class PosComponent implements OnInit {
   protected actualizarBusqueda(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.terminoBusqueda.set(input.value);
-    this.paginaActual.set(1); // Reset página al buscar
+    this.paginaActual.set(1);
   }
 
   protected limpiarBusqueda(): void {
@@ -286,20 +280,17 @@ export class PosComponent implements OnInit {
     this.paginaActual.set(1);
   }
 
-  // ✅ NUEVO: Cambiar categoría
   protected cambiarCategoria(categoria: CategoriaProducto | 'todas'): void {
     this.categoriaSeleccionada.set(categoria);
-    this.paginaActual.set(1); // Reset página al cambiar categoría
+    this.paginaActual.set(1);
   }
 
-  // ✅ NUEVO: Limpiar filtros
   protected limpiarFiltros(): void {
     this.terminoBusqueda.set('');
     this.categoriaSeleccionada.set('todas');
     this.paginaActual.set(1);
   }
 
-  // ✅ NUEVO: Alternar carrito móvil
   protected alternarCarritoMovil(): void {
     this.mostrarCarritoMovil.update((v) => !v);
   }
@@ -390,7 +381,6 @@ export class PosComponent implements OnInit {
     return item?.cantidad || 0;
   }
 
-  // ✅ MEJORADO: Paginación con lógica completa
   protected paginaAnterior(): void {
     if (this.paginaActual() > 1) {
       this.paginaActual.update((p) => p - 1);
@@ -410,6 +400,24 @@ export class PosComponent implements OnInit {
       this.paginaActual.set(pagina);
       this.scrollToTop();
     }
+  }
+
+  protected obtenerEmojiCategoria(categoria: CategoriaProducto): string {
+    const info = obtenerInfoCategoria(categoria);
+    return info?.emoji || '📦';
+  }
+
+  protected obtenerNombreCategoria(categoria: CategoriaProducto): string {
+    const categoriaInfo = CATEGORIAS_PRODUCTO_CATALOGO.find(
+      (cat) => cat.valor === categoria
+    );
+    return categoriaInfo?.etiqueta || 'Sin categoría';
+  }
+
+  protected obtenerCategoriaCompleta(categoria: CategoriaProducto): string {
+    const emoji = this.obtenerEmojiCategoria(categoria);
+    const nombre = this.obtenerNombreCategoria(categoria);
+    return `${emoji} ${nombre}`;
   }
 
   protected irAPaginaInput(event: Event): void {
@@ -539,7 +547,7 @@ export class PosComponent implements OnInit {
     }
 
     this.mostrarModalVenta.set(true);
-    this.mostrarCarritoMovil.set(false); // Cerrar carrito móvil
+    this.mostrarCarritoMovil.set(false);
   }
 
   protected cerrarModalVenta(): void {

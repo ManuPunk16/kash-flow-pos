@@ -5,16 +5,24 @@ import {
   computed,
   inject,
   OnInit,
-  effect,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+
+// ✅ SERVICIOS
 import { ProductosService } from '@core/services/productos.service';
 import { ProveedoresService } from '@core/services/proveedores.service';
 import { PreferenciasService } from '@core/services/preferencias.service';
 import { CodigosBarrasService } from '@core/services/codigos-barras.service';
-import { Producto, CategoriaProducto } from '@core/models/producto.model';
+
+// ✅ MODELOS (SIN ENUMS)
+import { Producto } from '@core/models/producto.model';
 import { Proveedor } from '@core/models/proveedor.model';
+
+// ✅ ENUMS (DESDE BARREL EXPORT)
+import { CategoriaProducto, CATEGORIAS_PRODUCTO_CATALOGO } from '@core/enums';
+
+// ✅ COMPONENTES
 import { ModalCodigoBarras } from '@shared/components/modal-codigo-barras/modal-codigo-barras';
 
 interface CategoriaInfo {
@@ -28,7 +36,7 @@ interface CategoriaInfo {
   templateUrl: './inventario.html',
   styleUrl: './inventario.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, ModalCodigoBarras], // ✅ Importar modal
+  imports: [CommonModule, FormsModule, ModalCodigoBarras],
 })
 export class Inventario implements OnInit {
   private readonly productosService = inject(ProductosService);
@@ -65,18 +73,14 @@ export class Inventario implements OnInit {
     () => this.preferencias().inventario.mostrarCodigosBarras
   );
 
-  // Categorías disponibles
+  // ✅ MEJORADO: Usar catálogo desde enum
   protected readonly categorias: CategoriaInfo[] = [
-    { valor: 'todas', etiqueta: 'Todas', emoji: '📦' },
-    { valor: 'bebidas', etiqueta: 'Bebidas', emoji: '🥤' },
-    { valor: 'lacteos', etiqueta: 'Lácteos', emoji: '🥛' },
-    { valor: 'panaderia', etiqueta: 'Panadería', emoji: '🍞' },
-    { valor: 'carnes', etiqueta: 'Carnes', emoji: '🥩' },
-    { valor: 'frutas-verduras', etiqueta: 'Frutas y Verduras', emoji: '🍎' },
-    { valor: 'abarrotes', etiqueta: 'Abarrotes', emoji: '🛒' },
-    { valor: 'limpieza', etiqueta: 'Limpieza', emoji: '🧹' },
-    { valor: 'higiene-personal', etiqueta: 'Higiene Personal', emoji: '🧴' },
-    { valor: 'otros', etiqueta: 'Otros', emoji: '📦' },
+    { valor: 'todas', etiqueta: 'Todas', emoji: '🛒' },
+    ...CATEGORIAS_PRODUCTO_CATALOGO.map((cat) => ({
+      valor: cat.valor,
+      etiqueta: cat.etiqueta,
+      emoji: cat.emoji,
+    })),
   ];
 
   // Productos filtrados
@@ -310,11 +314,11 @@ export class Inventario implements OnInit {
     );
   }
 
-  // ✅ Estado para modal de código de barras
+  // Estado para modal de código de barras
   protected readonly modalCodigoBarrasAbierto = signal(false);
   protected readonly productoCodigoBarras = signal<Producto | null>(null);
 
-  // ✅ Abrir modal de código de barras
+  // Abrir modal de código de barras
   protected abrirModalCodigoBarras(producto: Producto): void {
     if (!producto.codigoBarras) {
       alert('⚠️ Este producto no tiene código de barras asignado');
@@ -325,7 +329,7 @@ export class Inventario implements OnInit {
     this.modalCodigoBarrasAbierto.set(true);
   }
 
-  // ✅ Cerrar modal de código de barras
+  // Cerrar modal de código de barras
   protected cerrarModalCodigoBarras(): void {
     this.modalCodigoBarrasAbierto.set(false);
     this.productoCodigoBarras.set(null);

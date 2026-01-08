@@ -12,13 +12,17 @@ import { ProductosService } from '@core/services/productos.service';
 import { AuthService } from '@core/services/auth.service';
 import { ClientesService } from '@core/services/clientes.service';
 import { VentasService } from '@core/services/ventas.service';
-import { CarritoService } from '@core/services/carrito.service'; // ✅ NUEVO
+import { CarritoService } from '@core/services/carrito.service';
 import { Producto } from '@core/models/producto.model';
 import { ItemCarrito, productoAItemCarrito } from '@core/models/carrito.model';
 import { Cliente } from '@core/models/cliente.model';
 import { MetodoPago } from '@core/enums';
 import { RegistrarVentaDTO } from '@core/models/venta.model';
 import { ModalClienteComponent } from '@features/clientes/modal-cliente/modal-cliente';
+import {
+  CategoriaProducto,
+  CATEGORIAS_PRODUCTO_CATALOGO,
+} from '@core/enums/categorias-producto.enum';
 
 interface RespuestaAPI<T> {
   exito: boolean;
@@ -44,6 +48,14 @@ export class PosComponent implements OnInit {
   private readonly todosLosProductos = signal<Producto[]>([]);
   protected readonly terminoBusqueda = signal('');
 
+  // ✅ NUEVO: Filtro de categoría
+  protected readonly categoriaSeleccionada = signal<
+    CategoriaProducto | 'todas'
+  >('todas');
+
+  // ✅ NUEVO: Modal de carrito móvil
+  protected readonly mostrarCarritoMovil = signal(false);
+
   protected readonly carrito = computed(() =>
     this.carritoService.obtenerItems()
   );
@@ -56,33 +68,46 @@ export class PosComponent implements OnInit {
   protected readonly busquedaCliente = signal('');
   protected readonly mostrarListaClientes = signal(false);
 
-  // 📧 Email del usuario
   protected readonly emailUsuario = computed(
     () => this.authService.obtenerUsuarioActual()?.email || 'Usuario'
   );
 
-  // 🔍 Productos filtrados por búsqueda
-  protected readonly productos = computed(() => {
+  // ✅ NUEVO: Catálogo de categorías para UI
+  protected readonly CATEGORIAS = [
+    { valor: 'todas' as const, etiqueta: 'Todas', emoji: '🛒' },
+    ...CATEGORIAS_PRODUCTO_CATALOGO,
+  ];
+
+  // 🔍 Productos filtrados por búsqueda Y categoría
+  protected readonly productosFiltrados = computed(() => {
     const termino = this.terminoBusqueda().toLowerCase().trim();
+    const categoria = this.categoriaSeleccionada();
+    let resultado = this.todosLosProductos();
 
-    let productosFiltrados = termino
-      ? this.todosLosProductos().filter((producto) => {
-          const nombreCoincide = producto.nombre
-            .toLowerCase()
-            .includes(termino);
-          const codigoCoincide = producto.codigoBarras
-            ?.toLowerCase()
-            .includes(termino);
-          const categoriaCoincide = producto.categoria
-            ?.toLowerCase()
-            .includes(termino);
-          return nombreCoincide || codigoCoincide || categoriaCoincide;
-        })
-      : this.todosLosProductos();
+    // Filtrar por categoría
+    if (categoria !== 'todas') {
+      resultado = resultado.filter((p) => p.categoria === categoria);
+    }
 
+    // Filtrar por búsqueda
+    if (termino) {
+      resultado = resultado.filter((producto) => {
+        const nombreCoincide = producto.nombre.toLowerCase().includes(termino);
+        const codigoCoincide = producto.codigoBarras
+          ?.toLowerCase()
+          .includes(termino);
+        return nombreCoincide || codigoCoincide;
+      });
+    }
+
+    return resultado;
+  });
+
+  // ✅ MEJORADO: Productos con paginación
+  protected readonly productos = computed(() => {
+    const productosFiltrados = this.productosFiltrados();
     const inicio = (this.paginaActual() - 1) * this.productosPorPagina();
     const fin = inicio + this.productosPorPagina();
-
     return productosFiltrados.slice(inicio, fin);
   });
 
@@ -188,37 +213,27 @@ export class PosComponent implements OnInit {
     return true;
   });
 
+  // ✅ MEJORADO: Paginación más robusta
   protected readonly paginaActual = signal(1);
   protected readonly productosPorPagina = signal(20);
 
-  protected readonly totalProductos = computed(() => {
-    const termino = this.terminoBusqueda().toLowerCase().trim();
+  protected readonly totalProductos = computed(
+    () => this.productosFiltrados().length
+  );
 
-    if (!termino) {
-      return this.todosLosProductos().length;
-    }
-
-    return this.todosLosProductos().filter((producto) => {
-      const nombreCoincide = producto.nombre.toLowerCase().includes(termino);
-      const codigoCoincide = producto.codigoBarras
-        ?.toLowerCase()
-        .includes(termino);
-      const categoriaCoincide = producto.categoria
-        ?.toLowerCase()
-        .includes(termino);
-      return nombreCoincide || codigoCoincide || categoriaCoincide;
-    }).length;
+  protected readonly totalPaginas = computed(() => {
+    const total = this.totalProductos();
+    const porPagina = this.productosPorPagina();
+    return total > 0 ? Math.ceil(total / porPagina) : 0;
   });
 
-  protected readonly totalPaginas = computed(() =>
-    Math.ceil(this.totalProductos() / this.productosPorPagina())
-  );
+  // ✅ NUEVO: Math para template
+  protected readonly Math = Math;
 
   ngOnInit(): void {
     this.cargarProductos();
     this.cargarClientes();
 
-    // ✅ NUEVO: Mostrar mensaje si hay carrito restaurado
     const cantidadRestaurada = this.carritoService.cantidadItems();
     if (cantidadRestaurada > 0) {
       this.mostrarAlerta(`✅ Carrito restaurado (${cantidadRestaurada} items)`);
@@ -263,14 +278,32 @@ export class PosComponent implements OnInit {
   protected actualizarBusqueda(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.terminoBusqueda.set(input.value);
-    this.paginaActual.set(1);
+    this.paginaActual.set(1); // Reset página al buscar
   }
 
   protected limpiarBusqueda(): void {
     this.terminoBusqueda.set('');
+    this.paginaActual.set(1);
   }
 
-  // ✅ CAMBIO: Usar carritoService
+  // ✅ NUEVO: Cambiar categoría
+  protected cambiarCategoria(categoria: CategoriaProducto | 'todas'): void {
+    this.categoriaSeleccionada.set(categoria);
+    this.paginaActual.set(1); // Reset página al cambiar categoría
+  }
+
+  // ✅ NUEVO: Limpiar filtros
+  protected limpiarFiltros(): void {
+    this.terminoBusqueda.set('');
+    this.categoriaSeleccionada.set('todas');
+    this.paginaActual.set(1);
+  }
+
+  // ✅ NUEVO: Alternar carrito móvil
+  protected alternarCarritoMovil(): void {
+    this.mostrarCarritoMovil.update((v) => !v);
+  }
+
   protected agregarAlCarrito(producto: Producto): void {
     if (producto.stock === 0) {
       this.mostrarAlerta('⚠️ Producto sin stock');
@@ -299,7 +332,6 @@ export class PosComponent implements OnInit {
     }
   }
 
-  // ✅ CAMBIO: Usar carritoService
   protected incrementarCantidad(productoId: string): void {
     const item = this.carrito().find((i) => i.productoId === productoId);
 
@@ -315,17 +347,14 @@ export class PosComponent implements OnInit {
     this.carritoService.incrementarCantidad(productoId);
   }
 
-  // ✅ CAMBIO: Usar carritoService
   protected decrementarCantidad(productoId: string): void {
     this.carritoService.decrementarCantidad(productoId);
   }
 
-  // ✅ CAMBIO: Usar carritoService
   protected eliminarDelCarrito(productoId: string): void {
     this.carritoService.eliminarItem(productoId);
   }
 
-  // ✅ CAMBIO: Usar carritoService
   protected limpiarCarrito(): void {
     this.carritoService.limpiar();
     this.descuento.set(0);
@@ -359,6 +388,56 @@ export class PosComponent implements OnInit {
   protected obtenerCantidadEnCarrito(productoId: string): number {
     const item = this.carrito().find((i) => i.productoId === productoId);
     return item?.cantidad || 0;
+  }
+
+  // ✅ MEJORADO: Paginación con lógica completa
+  protected paginaAnterior(): void {
+    if (this.paginaActual() > 1) {
+      this.paginaActual.update((p) => p - 1);
+      this.scrollToTop();
+    }
+  }
+
+  protected paginaSiguiente(): void {
+    if (this.paginaActual() < this.totalPaginas()) {
+      this.paginaActual.update((p) => p + 1);
+      this.scrollToTop();
+    }
+  }
+
+  protected irAPagina(pagina: number): void {
+    if (pagina >= 1 && pagina <= this.totalPaginas()) {
+      this.paginaActual.set(pagina);
+      this.scrollToTop();
+    }
+  }
+
+  protected irAPaginaInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const pagina = parseInt(input.value, 10);
+
+    if (isNaN(pagina)) {
+      input.value = this.paginaActual().toString();
+      return;
+    }
+
+    if (pagina < 1) {
+      this.irAPagina(1);
+      input.value = '1';
+      return;
+    }
+
+    if (pagina > this.totalPaginas()) {
+      this.irAPagina(this.totalPaginas());
+      input.value = this.totalPaginas().toString();
+      return;
+    }
+
+    this.irAPagina(pagina);
+  }
+
+  private scrollToTop(): void {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   protected actualizarBusquedaCliente(event: Event): void {
@@ -460,6 +539,7 @@ export class PosComponent implements OnInit {
     }
 
     this.mostrarModalVenta.set(true);
+    this.mostrarCarritoMovil.set(false); // Cerrar carrito móvil
   }
 
   protected cerrarModalVenta(): void {
@@ -521,7 +601,6 @@ export class PosComponent implements OnInit {
           this.mostrarAlerta('✅ Venta registrada exitosamente');
         }
 
-        // ✅ CAMBIO: Limpiar usando servicio
         this.limpiarCarrito();
         this.mostrarModalVenta.set(false);
         this.cargarProductos();
@@ -539,31 +618,6 @@ export class PosComponent implements OnInit {
         this.loading.set(false);
       },
     });
-  }
-
-  protected paginaAnterior(): void {
-    if (this.paginaActual() > 1) {
-      this.paginaActual.update((p) => p - 1);
-      this.scrollToTop();
-    }
-  }
-
-  protected paginaSiguiente(): void {
-    if (this.paginaActual() < this.totalPaginas()) {
-      this.paginaActual.update((p) => p + 1);
-      this.scrollToTop();
-    }
-  }
-
-  protected irAPagina(pagina: number): void {
-    if (pagina >= 1 && pagina <= this.totalPaginas()) {
-      this.paginaActual.set(pagina);
-      this.scrollToTop();
-    }
-  }
-
-  private scrollToTop(): void {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   protected actualizarComisionTerminal(event: Event): void {

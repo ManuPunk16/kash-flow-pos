@@ -24,6 +24,7 @@ import { CategoriaProducto, CATEGORIAS_PRODUCTO_CATALOGO } from '@core/enums';
 
 // ✅ COMPONENTES
 import { ModalCodigoBarras } from '@shared/components/modal-codigo-barras/modal-codigo-barras';
+import { ModalProductoComponent } from './components/modal-producto/modal-producto';
 
 interface CategoriaInfo {
   valor: CategoriaProducto | 'todas';
@@ -36,7 +37,12 @@ interface CategoriaInfo {
   templateUrl: './inventario.html',
   styleUrl: './inventario.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, ModalCodigoBarras],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ModalCodigoBarras,
+    ModalProductoComponent,
+  ],
 })
 export class Inventario implements OnInit {
   private readonly productosService = inject(ProductosService);
@@ -333,6 +339,51 @@ export class Inventario implements OnInit {
   protected cerrarModalCodigoBarras(): void {
     this.modalCodigoBarrasAbierto.set(false);
     this.productoCodigoBarras.set(null);
+  }
+
+  // ✅ AGREGAR MÉTODO PARA GUARDAR PRODUCTO NUEVO
+  protected guardarProductoNuevo(datos: any): void {
+    this.productosService.crearProducto(datos).subscribe({
+      next: (productoCreado) => {
+        console.log('✅ Producto creado:', productoCreado);
+        this.cargarProductos();
+        this.cerrarModal();
+      },
+      error: (err: Error) => {
+        console.error('❌ Error al crear producto:', err);
+        alert(`Error al crear producto: ${err.message}`);
+      },
+    });
+  }
+
+  // ✅ AGREGAR MÉTODO PARA GUARDAR PRODUCTO EDITADO
+  protected guardarProductoEditado(datos: any): void {
+    const productoId = this.productoSeleccionado()?._id;
+    if (!productoId) {
+      alert('⚠️ Error: No se encontró el ID del producto');
+      return;
+    }
+
+    this.productosService.actualizarProducto(productoId, datos).subscribe({
+      next: (productoActualizado) => {
+        console.log('✅ Producto actualizado:', productoActualizado);
+        this.cargarProductos();
+        this.cerrarModal();
+      },
+      error: (err: Error) => {
+        console.error('❌ Error al actualizar producto:', err);
+        alert(`Error al actualizar producto: ${err.message}`);
+      },
+    });
+  }
+
+  // ✅ MÉTODO UNIFICADO PARA MANEJAR GUARDADO
+  protected manejarGuardarProducto(datos: any): void {
+    if (this.productoSeleccionado()) {
+      this.guardarProductoEditado(datos);
+    } else {
+      this.guardarProductoNuevo(datos);
+    }
   }
 }
 

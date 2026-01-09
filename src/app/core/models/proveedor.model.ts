@@ -1,6 +1,7 @@
 export interface Proveedor {
   _id: string;
   nombre: string;
+  empresa?: string;
   contacto?: string;
   email?: string;
   telefono?: string;
@@ -17,6 +18,7 @@ export interface Proveedor {
 
 export interface CrearProveedorDTO {
   nombre: string;
+  empresa?: string;
   contacto?: string;
   email?: string;
   telefono?: string;

@@ -1,0 +1,416 @@
+<!-- Overlay oscuro -->
+<div
+  class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fadeIn"
+  (click)="cerrar()"
+>
+  <!-- Modal (stop propagation para evitar cerrar al hacer click dentro) -->
+  <div
+    class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden animate-slideUp"
+    (click)="$event.stopPropagation()"
+  >
+    <!-- Header -->
+    <div
+      class="bg-linear-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex items-center justify-between"
+    >
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">{{ modoEdicion() ? '✏️' : '➕' }}</span>
+        <div>
+          <h2 class="text-2xl font-bold">
+            {{ modoEdicion() ? 'Editar Producto' : 'Nuevo Producto' }}
+          </h2>
+          <p class="text-blue-100 text-sm">
+            {{ modoEdicion() ? 'Actualiza la información del producto' :
+            'Completa los datos del nuevo producto' }}
+          </p>
+        </div>
+      </div>
+
+      <button
+        (click)="cerrar()"
+        class="text-white hover:bg-white hover:text-blue-600 rounded-full p-2 transition-colors"
+        [disabled]="guardando()"
+      >
+        <span class="text-2xl">✕</span>
+      </button>
+    </div>
+
+    <!-- Alerta de Error -->
+    @if (errorValidacion()) {
+    <div
+      class="mx-6 mt-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg animate-shake"
+    >
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">⚠️</span>
+        <p class="text-red-800 font-semibold">{{ errorValidacion() }}</p>
+      </div>
+    </div>
+    }
+
+    <!-- Formulario -->
+    <form
+      [formGroup]="formulario"
+      (ngSubmit)="guardar()"
+      class="p-6 overflow-y-auto max-h-[calc(90vh-180px)]"
+    >
+      <!-- Grid de 2 columnas -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Columna 1: Información Básica -->
+        <div class="space-y-4">
+          <h3
+            class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"
+          >
+            <span>📝</span>
+            <span>Información Básica</span>
+          </h3>
+
+          <!-- Nombre -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              Nombre del Producto
+              <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              formControlName="nombre"
+              placeholder="Ej: Coca Cola 600ml"
+              class="w-full px-4 py-3 border-2 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+              [class.border-red-500]="esInvalido('nombre')"
+              [class.border-gray-300]="!esInvalido('nombre')"
+            />
+            @if (esInvalido('nombre')) {
+            <p class="text-red-500 text-sm mt-1">
+              {{ obtenerError('nombre') }}
+            </p>
+            }
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              Empresa
+            </label>
+            <input
+              type="text"
+              formControlName="empresa"
+              placeholder="Nombre de la empresa (opcional)"
+              class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+            />
+            <p class="text-gray-500 text-xs mt-1">
+              Razón social o nombre comercial del proveedor
+            </p>
+          </div>
+
+          <!-- Descripción -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              Descripción
+              <span class="text-red-500">*</span>
+            </label>
+            <textarea
+              formControlName="descripcion"
+              rows="3"
+              placeholder="Describe el producto..."
+              class="w-full px-4 py-3 border-2 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all resize-none"
+              [class.border-red-500]="esInvalido('descripcion')"
+              [class.border-gray-300]="!esInvalido('descripcion')"
+            ></textarea>
+            @if (esInvalido('descripcion')) {
+            <p class="text-red-500 text-sm mt-1">
+              {{ obtenerError('descripcion') }}
+            </p>
+            }
+          </div>
+
+          <!-- Categoría -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              Categoría
+              <span class="text-red-500">*</span>
+            </label>
+            <select
+              formControlName="categoria"
+              class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all appearance-none bg-white cursor-pointer"
+            >
+              @for (cat of CATEGORIAS; track cat.valor) {
+              <option [value]="cat.valor">
+                {{ cat.emoji }} {{ cat.etiqueta }}
+              </option>
+              }
+            </select>
+          </div>
+
+          <!-- Código de Barras -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              Código de Barras
+            </label>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                formControlName="codigoBarras"
+                placeholder="Ej: 7501234567890"
+                class="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all font-mono"
+              />
+              <button
+                type="button"
+                (click)="generarCodigoBarras()"
+                class="px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors whitespace-nowrap"
+              >
+                🎲 Generar
+              </button>
+            </div>
+            <p class="text-gray-500 text-xs mt-1">
+              Opcional. Se puede generar automáticamente.
+            </p>
+          </div>
+        </div>
+
+        <!-- Columna 2: Precios y Stock -->
+        <div class="space-y-4">
+          <h3
+            class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"
+          >
+            <span>💰</span>
+            <span>Precios y Stock</span>
+          </h3>
+
+          <!-- Costo Unitario -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              Costo Unitario (Compra)
+              <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <span
+                class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold"
+              >
+                $
+              </span>
+              <input
+                type="number"
+                formControlName="costoUnitario"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                class="w-full pl-8 pr-4 py-3 border-2 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                [class.border-red-500]="esInvalido('costoUnitario')"
+                [class.border-gray-300]="!esInvalido('costoUnitario')"
+              />
+            </div>
+            @if (esInvalido('costoUnitario')) {
+            <p class="text-red-500 text-sm mt-1">
+              {{ obtenerError('costoUnitario') }}
+            </p>
+            }
+          </div>
+
+          <!-- Precio de Venta -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              Precio de Venta
+              <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <span
+                class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold"
+              >
+                $
+              </span>
+              <input
+                type="number"
+                formControlName="precioVenta"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                class="w-full pl-8 pr-4 py-3 border-2 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                [class.border-red-500]="esInvalido('precioVenta')"
+                [class.border-gray-300]="!esInvalido('precioVenta')"
+              />
+            </div>
+            @if (esInvalido('precioVenta')) {
+            <p class="text-red-500 text-sm mt-1">
+              {{ obtenerError('precioVenta') }}
+            </p>
+            }
+          </div>
+
+          <!-- Margen de Ganancia (Calculado) -->
+          <div class="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-semibold text-gray-700">
+                  Margen de Ganancia
+                </p>
+                <p class="text-2xl font-bold text-green-600">
+                  {{ margenGanancia().toFixed(2) }}%
+                </p>
+              </div>
+              <div class="text-right">
+                <p class="text-sm font-semibold text-gray-700">Ganancia</p>
+                <p class="text-xl font-bold text-green-600">
+                  {{ formatearMoneda(gananciaPesos()) }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stock Actual -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              Stock Actual
+              <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              formControlName="stock"
+              min="0"
+              step="1"
+              placeholder="0"
+              class="w-full px-4 py-3 border-2 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+              [class.border-red-500]="esInvalido('stock')"
+              [class.border-gray-300]="!esInvalido('stock')"
+            />
+            @if (esInvalido('stock')) {
+            <p class="text-red-500 text-sm mt-1">{{ obtenerError('stock') }}</p>
+            }
+          </div>
+
+          <!-- Stock Mínimo -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              Stock Mínimo (Alerta)
+              <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              formControlName="stockMinimo"
+              min="0"
+              step="1"
+              placeholder="5"
+              class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+            />
+            <p class="text-gray-500 text-xs mt-1">
+              Se alertará cuando el stock sea igual o menor a este valor
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección de Consignación -->
+      <div class="mt-6 border-t-2 border-gray-200 pt-6">
+        <h3
+          class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"
+        >
+          <span>🤝</span>
+          <span>Consignación</span>
+        </h3>
+
+        <!-- Toggle Consignación -->
+        <div
+          class="flex items-center justify-between bg-gray-50 rounded-lg p-4 mb-4"
+        >
+          <div class="flex items-center gap-3">
+            <span class="text-3xl">🤝</span>
+            <div>
+              <p class="font-semibold text-gray-900">
+                Producto en Consignación
+              </p>
+              <p class="text-sm text-gray-600">
+                Este producto pertenece a un proveedor externo
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            (click)="toggleConsignacion()"
+            [class]="esConsignacion() 
+              ? 'bg-purple-600' 
+              : 'bg-gray-300'"
+            class="relative inline-flex h-8 w-14 items-center rounded-full transition-colors"
+          >
+            <span
+              [class]="esConsignacion() 
+                ? 'translate-x-7' 
+                : 'translate-x-1'"
+              class="inline-block h-6 w-6 transform rounded-full bg-white transition-transform"
+            ></span>
+          </button>
+        </div>
+
+        <!-- Selector de Proveedor (solo si esConsignacion) -->
+        @if (esConsignacion()) {
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            Proveedor
+            <span class="text-red-500">*</span>
+          </label>
+          <select
+            formControlName="proveedorId"
+            class="w-full px-4 py-3 border-2 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all appearance-none bg-white cursor-pointer"
+            [class.border-red-500]="esInvalido('proveedorId')"
+            [class.border-gray-300]="!esInvalido('proveedorId')"
+          >
+            <option [value]="null">Selecciona un proveedor</option>
+            @for (prov of proveedores(); track prov._id) {
+            <option [value]="prov._id">
+              {{ prov.nombre }} @if (prov.empresa) { - {{ prov.empresa }} }
+            </option>
+            }
+          </select>
+          @if (esInvalido('proveedorId')) {
+          <p class="text-red-500 text-sm mt-1">
+            Debes seleccionar un proveedor para productos en consignación
+          </p>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- Estado Activo -->
+      <div class="mt-6 flex items-center gap-3 bg-blue-50 rounded-lg p-4">
+        <input
+          type="checkbox"
+          formControlName="activo"
+          id="activo"
+          class="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+        />
+        <label
+          for="activo"
+          class="text-sm font-semibold text-gray-900 cursor-pointer"
+        >
+          ✅ Producto activo (visible en el punto de venta)
+        </label>
+      </div>
+    </form>
+
+    <!-- Footer con botones -->
+    <div
+      class="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t-2 border-gray-200"
+    >
+      <button
+        type="button"
+        (click)="cerrar()"
+        [disabled]="guardando()"
+        class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Cancelar
+      </button>
+
+      <button
+        type="button"
+        (click)="guardar()"
+        [disabled]="guardando() || formulario.invalid"
+        class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        @if (guardando()) {
+        <div
+          class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+        ></div>
+        <span>Guardando...</span>
+        } @else {
+        <span>{{ modoEdicion() ? '💾 Actualizar' : '➕ Crear Producto' }}</span>
+        }
+      </button>
+    </div>
+  </div>
+</div>

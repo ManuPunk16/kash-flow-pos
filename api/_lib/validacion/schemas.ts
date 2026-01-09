@@ -136,6 +136,7 @@ export const esquemaCrearAbono = Joi.object({
 
 export const esquemaCrearProveedor = Joi.object({
   nombre: Joi.string().required().min(2).max(100).trim(),
+  empresa: Joi.string().optional(),
   contacto: Joi.string().optional().trim(),
   email: Joi.string().optional().email().lowercase().trim(),
   telefono: Joi.string().optional().trim(),

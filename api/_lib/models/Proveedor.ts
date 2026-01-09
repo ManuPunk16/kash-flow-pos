@@ -2,6 +2,7 @@ import { Schema, model, Document } from 'mongoose';
 
 export interface IProveedor extends Document {
   nombre: string;
+  empresa: string;
   contacto: string;
   email: string;
   telefono: string;
@@ -19,6 +20,7 @@ export interface IProveedor extends Document {
 const proveedorSchema = new Schema<IProveedor>(
   {
     nombre: { type: String, required: true },
+    empresa: { type: String },
     contacto: { type: String },
     email: { type: String, lowercase: true },
     telefono: { type: String },

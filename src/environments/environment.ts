@@ -1,6 +1,15 @@
 export const environment = {
   production: true,
   apiUrl: 'https://kash-flow-pos.vercel.app/api',
+  urlBase: 'https://kash-flow-pos.vercel.app',
+
+  nombreNegocio: '',
+  direccionNegocio: 'La tiendita de tu corazón',
+  telefonoNegocio: '',
+  emailNegocio: '',
+  rfcNegocio: '',
+  logoNegocio: null,
+
   firebase: {
     apiKey: 'AIzaSyDz1vdzZg-AGm8Jm0psWf6Wap_VdQHDwis',
     authDomain: 'kash-flow-pos.firebaseapp.com',

@@ -20,6 +20,7 @@ import { CarritoService } from '@core/services/carrito.service';
 import { Producto } from '@core/models/producto.model';
 import { ItemCarrito, productoAItemCarrito } from '@core/models/carrito.model';
 import { Cliente } from '@core/models/cliente.model';
+import { Venta } from '@core/models/venta.model';
 import { RegistrarVentaDTO } from '@core/models/venta.model';
 
 // ✅ ENUMS (DESDE UN SOLO LUGAR)
@@ -32,6 +33,7 @@ import {
 
 // ✅ COMPONENTES
 import { ModalClienteComponent } from '@features/clientes/modal-cliente/modal-cliente';
+import { ModalTicket } from '@shared/components/modal-ticket/modal-ticket';
 
 interface RespuestaAPI<T> {
   exito: boolean;
@@ -41,7 +43,7 @@ interface RespuestaAPI<T> {
 
 @Component({
   selector: 'app-pos',
-  imports: [CommonModule, FormsModule, ModalClienteComponent],
+  imports: [CommonModule, FormsModule, ModalClienteComponent, ModalTicket],
   templateUrl: './pos.component.html',
   styleUrl: './pos.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -175,7 +177,13 @@ export class PosComponent implements OnInit {
   protected readonly mostrarInputComision = signal(false);
 
   protected readonly esMontoPagadoSuficiente = computed(() => {
+    // ✅ Si no es efectivo, siempre es suficiente
     if (this.metodoPago() !== MetodoPago.EFECTIVO) return true;
+
+    // ✅ Si no se ingresó monto, es válido (opcional)
+    if (this.montoPagadoEfectivo() === 0) return true;
+
+    // ✅ Si se ingresó monto, debe ser >= total
     return this.montoPagadoEfectivo() >= this.totalFinal();
   });
 
@@ -539,6 +547,8 @@ export class PosComponent implements OnInit {
   }
 
   protected readonly mostrarModalVenta = signal(false);
+  protected readonly mostrarModalTicket = signal(false); // ✅ AGREGAR ESTAS 2 LÍNEAS DESPUÉS DE mostrarModalCrearCliente
+  protected readonly ventaParaTicket = signal<Venta | null>(null);
 
   protected abrirModalVenta(): void {
     if (this.carrito().length === 0) {
@@ -561,15 +571,7 @@ export class PosComponent implements OnInit {
 
   protected confirmarVenta(): void {
     if (!this.puedeFinalizarVenta()) {
-      this.mostrarAlerta('⚠️ Completa todos los datos requeridos');
-      return;
-    }
-
-    if (
-      this.metodoPago() === MetodoPago.EFECTIVO &&
-      !this.esMontoPagadoSuficiente()
-    ) {
-      this.mostrarAlerta('⚠️ El monto pagado es insuficiente');
+      alert('⚠️ Verifica los datos antes de continuar');
       return;
     }
 
@@ -594,38 +596,32 @@ export class PosComponent implements OnInit {
 
     this.ventasService.registrarVenta(ventaDTO).subscribe({
       next: (venta) => {
-        console.log('✅ Venta registrada:', venta);
+        console.log('✅ [POS] Venta registrada:', venta);
 
-        if (
-          this.metodoPago() === MetodoPago.EFECTIVO &&
-          this.cambioEfectivo() > 0
-        ) {
-          this.mostrarAlerta(
-            `✅ Venta registrada. Cambio: $${this.cambioEfectivo().toLocaleString(
-              'es-MX'
-            )}`
-          );
-        } else {
-          this.mostrarAlerta('✅ Venta registrada exitosamente');
-        }
+        this.ventaParaTicket.set(venta);
+        this.mostrarModalTicket.set(true);
 
         this.limpiarCarrito();
-        this.mostrarModalVenta.set(false);
-        this.cargarProductos();
+        this.cerrarModalVenta();
+        this.recargarProductos();
       },
       error: (error) => {
-        console.error('❌ Error al registrar venta:', error);
-        const mensajeError =
-          error.error?.mensaje ||
-          error.error?.error ||
-          error.message ||
-          'Error desconocido';
-        this.mostrarAlerta(`❌ Error: ${mensajeError}`);
+        console.error('❌ [POS] Error al registrar venta:', error);
+        const mensaje =
+          error instanceof Error
+            ? error.message
+            : 'Error al registrar la venta';
+        alert(`❌ Error: ${mensaje}`);
       },
       complete: () => {
         this.loading.set(false);
       },
     });
+  }
+
+  protected cerrarModalTicket(): void {
+    this.mostrarModalTicket.set(false);
+    this.ventaParaTicket.set(null);
   }
 
   protected actualizarComisionTerminal(event: Event): void {

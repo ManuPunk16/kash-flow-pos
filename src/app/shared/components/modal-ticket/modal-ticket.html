@@ -1,0 +1,184 @@
+<!-- Overlay oscuro -->
+<div
+  class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-fadeIn"
+  (click)="cerrar()"
+>
+  <!-- Modal -->
+  <div
+    class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden animate-slideUp"
+    (click)="$event.stopPropagation()"
+  >
+    <!-- Header -->
+    <div
+      class="bg-linear-to-r from-green-600 to-green-700 text-white px-6 py-4 flex items-center justify-between"
+    >
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">🧾</span>
+        <div>
+          <h2 class="text-2xl font-bold">Ticket de Venta</h2>
+          <p class="text-green-100 text-sm">
+            Ticket #{{ venta().numeroVenta }}
+          </p>
+        </div>
+      </div>
+
+      <button
+        (click)="cerrar()"
+        class="text-white hover:bg-white hover:text-green-600 rounded-full p-2 transition-colors"
+        [disabled]="cargando()"
+      >
+        <span class="text-2xl">✕</span>
+      </button>
+    </div>
+
+    <!-- Alertas -->
+    @if (mensajeExito()) {
+    <div
+      class="mx-6 mt-4 bg-green-50 border-l-4 border-green-500 p-4 rounded-lg animate-shake"
+    >
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">✅</span>
+        <p class="text-green-800 font-semibold">{{ mensajeExito() }}</p>
+      </div>
+    </div>
+    } @if (mensajeError()) {
+    <div
+      class="mx-6 mt-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg animate-shake"
+    >
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">❌</span>
+        <p class="text-red-800 font-semibold">{{ mensajeError() }}</p>
+      </div>
+    </div>
+    }
+
+    <!-- Información del ticket -->
+    <div class="p-6">
+      <div class="bg-gray-50 rounded-lg p-4 mb-6">
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p class="text-gray-600 font-semibold">Cliente:</p>
+            <p class="text-gray-900">{{ venta().nombreCliente }}</p>
+          </div>
+          <div>
+            <p class="text-gray-600 font-semibold">Método de Pago:</p>
+            <p class="text-gray-900">{{ venta().metodoPago }}</p>
+          </div>
+          <div>
+            <p class="text-gray-600 font-semibold">Total:</p>
+            <p class="text-green-600 font-bold text-lg">
+              ${{ venta().total.toFixed(2) }}
+            </p>
+          </div>
+          <div>
+            <p class="text-gray-600 font-semibold">Fecha:</p>
+            <p class="text-gray-900">
+              {{ venta().fechaVenta | date: 'dd/MM/yyyy HH:mm' }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Descripción de acciones -->
+      <div class="mb-4">
+        <h3 class="text-sm font-bold text-gray-700 mb-2">
+          📋 Opciones disponibles:
+        </h3>
+        <ul class="text-xs text-gray-600 space-y-1">
+          <li>🖨️ Imprimir directamente en impresora térmica</li>
+          <li>📄 Descargar como PDF para enviar o guardar</li>
+          <li>🖼️ Descargar como imagen PNG</li>
+          <li>📋 Copiar imagen al portapapeles (para pegar en WhatsApp)</li>
+        </ul>
+      </div>
+
+      <!-- Grid de botones -->
+      <div class="grid grid-cols-2 gap-3">
+        <!-- Botón Imprimir -->
+        <button
+          (click)="imprimir()"
+          [disabled]="cargando()"
+          class="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors disabled:cursor-not-allowed"
+        >
+          @if (cargando()) {
+          <div
+            class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+          ></div>
+          } @else {
+          <span class="text-xl">🖨️</span>
+          <span class="text-sm">Imprimir</span>
+          }
+        </button>
+
+        <!-- Botón Descargar PDF -->
+        <button
+          (click)="descargarPDF()"
+          [disabled]="cargando()"
+          class="flex items-center justify-center gap-2 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors disabled:cursor-not-allowed"
+        >
+          @if (cargando()) {
+          <div
+            class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+          ></div>
+          } @else {
+          <span class="text-xl">📄</span>
+          <span class="text-sm">Guardar PDF</span>
+          }
+        </button>
+
+        <!-- Botón Descargar Imagen -->
+        <button
+          (click)="descargarImagen()"
+          [disabled]="cargando()"
+          class="flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors disabled:cursor-not-allowed"
+        >
+          @if (cargando()) {
+          <div
+            class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+          ></div>
+          } @else {
+          <span class="text-xl">🖼️</span>
+          <span class="text-sm">Descargar PNG</span>
+          }
+        </button>
+
+        <!-- Botón Copiar Imagen -->
+        <button
+          (click)="copiarImagen()"
+          [disabled]="cargando()"
+          class="flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors disabled:cursor-not-allowed"
+        >
+          @if (cargando()) {
+          <div
+            class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+          ></div>
+          } @else {
+          <span class="text-xl">📋</span>
+          <span class="text-sm">Copiar Imagen</span>
+          }
+        </button>
+      </div>
+
+      <!-- Nota informativa -->
+      <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <p class="text-xs text-blue-800">
+          💡 <strong>Consejo:</strong> Usa "Copiar Imagen" para pegar
+          directamente en WhatsApp o Telegram sin descargar.
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div
+      class="bg-gray-50 px-6 py-4 flex items-center justify-center border-t border-gray-200"
+    >
+      <button
+        (click)="cerrar()"
+        [disabled]="cargando()"
+        class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Cerrar
+      </button>
+    </div>
+  </div>
+</div>

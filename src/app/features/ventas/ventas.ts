@@ -12,12 +12,13 @@ import { Venta } from '@core/models/venta.model';
 import { VentasService } from '@core/services/ventas.service';
 import { MetodoPago } from '@core/enums';
 import { DetalleVenta } from './detalle-venta/detalle-venta';
+import { ModalTicket } from '@shared/components/modal-ticket/modal-ticket'; // ✅ NUEVO
 
 type VistaVentas = 'tabla' | 'cards';
 
 @Component({
   selector: 'app-ventas',
-  imports: [CommonModule, FormsModule, DetalleVenta],
+  imports: [CommonModule, FormsModule, DetalleVenta, ModalTicket], // ✅ NUEVO: Agregar ModalTicket
   templateUrl: './ventas.html',
   styleUrl: './ventas.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -28,6 +29,7 @@ export class Ventas implements OnInit {
   // 🔥 Estado con signals
   protected readonly ventas = signal<Venta[]>([]);
   protected readonly ventaSeleccionada = signal<Venta | null>(null);
+  protected readonly ventaParaTicket = signal<Venta | null>(null); // ✅ NUEVO: Venta para mostrar ticket
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
 
@@ -54,16 +56,13 @@ export class Ventas implements OnInit {
 
   protected readonly ventasFiltradas = computed(() => {
     const termino = this.terminoBusqueda().toLowerCase();
-    const metodoPago = this.filtroMetodoPago();
     let resultado = this.ventas();
 
-    // ✅ Validación defensiva
     if (!Array.isArray(resultado)) {
       console.error('❌ ventas() no es array:', resultado);
       return [];
     }
 
-    // Filtrar por búsqueda (solo búsqueda local)
     if (termino) {
       resultado = resultado.filter(
         (venta) =>
@@ -78,7 +77,6 @@ export class Ventas implements OnInit {
   protected readonly estadisticasVista = computed(() => {
     const ventas = this.ventasFiltradas();
 
-    // ✅ Validación defensiva
     if (!Array.isArray(ventas) || ventas.length === 0) {
       return {
         cantidad: 0,
@@ -134,15 +132,9 @@ export class Ventas implements OnInit {
           : undefined,
     };
 
-    console.log('🔄 [Componente] Cargando ventas:', filtros);
-
     this.ventasService.obtenerVentasConFiltros(filtros).subscribe({
       next: (respuesta) => {
-        console.log('✅ [Componente] Respuesta recibida:', respuesta);
-
-        // ✅ Validación exhaustiva
         if (!respuesta || typeof respuesta !== 'object') {
-          console.error('❌ Respuesta inválida:', respuesta);
           this.error.set('Respuesta del servidor inválida');
           this.ventas.set([]);
           this.totalVentas.set(0);
@@ -150,20 +142,16 @@ export class Ventas implements OnInit {
         }
 
         if (!Array.isArray(respuesta.ventas)) {
-          console.error('❌ respuesta.ventas no es array:', respuesta.ventas);
           this.error.set('Formato de datos incorrecto');
           this.ventas.set([]);
           this.totalVentas.set(0);
           return;
         }
 
-        // ✅ Todo OK
         this.ventas.set(respuesta.ventas);
         this.totalVentas.set(respuesta.total || 0);
-        console.log(`✅ ${respuesta.ventas.length} ventas cargadas`);
       },
       error: (err) => {
-        console.error('❌ [Componente] Error:', err);
         this.error.set(err.message || 'Error al cargar ventas');
         this.ventas.set([]);
         this.totalVentas.set(0);
@@ -209,6 +197,16 @@ export class Ventas implements OnInit {
 
   protected cerrarDetalleVenta(): void {
     this.ventaSeleccionada.set(null);
+  }
+
+  // ✅ NUEVO: Abrir modal de ticket
+  protected verTicket(venta: Venta): void {
+    this.ventaParaTicket.set(venta);
+  }
+
+  // ✅ NUEVO: Cerrar modal de ticket
+  protected cerrarTicket(): void {
+    this.ventaParaTicket.set(null);
   }
 
   protected paginaAnterior(): void {

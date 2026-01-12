@@ -17,9 +17,14 @@ import { Venta } from '@core/models/venta.model';
 export class DetalleVenta {
   venta = input.required<Venta>();
   onCerrar = output<void>();
+  onVerTicket = output<Venta>();
 
   protected cerrar(): void {
     this.onCerrar.emit();
+  }
+
+  protected verTicket(): void {
+    this.onVerTicket.emit(this.venta());
   }
 
   protected obtenerIconoMetodoPago(metodo: string): string {

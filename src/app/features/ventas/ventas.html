@@ -196,9 +196,8 @@
     @else if (vista() === 'cards') {
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       @for (venta of ventasFiltradas(); track venta._id) {
-      <button
-        (click)="verDetalleVenta(venta)"
-        class="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow text-left border-2 border-transparent hover:border-blue-400"
+      <div
+        class="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow border-2 border-transparent hover:border-blue-400"
       >
         <!-- Header -->
         <div class="flex items-center justify-between mb-3">
@@ -251,7 +250,26 @@
             <span class="font-semibold">{{ venta.nombreUsuario }}</span>
           </p>
         </div>
-      </button>
+
+        <!-- ✅ NUEVO: Botones de Acción -->
+        <div class="mt-4 flex gap-2">
+          <button
+            (click)="verDetalleVenta(venta)"
+            class="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-1"
+          >
+            <span>👁️</span>
+            <span>Ver Detalle</span>
+          </button>
+
+          <button
+            (click)="verTicket(venta)"
+            class="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-1"
+          >
+            <span>🧾</span>
+            <span>Ticket</span>
+          </button>
+        </div>
+      </div>
       }
     </div>
     }
@@ -331,12 +349,24 @@
                 ${{ venta.gananciaTotal.toLocaleString('es-MX') }}
               </td>
               <td class="px-4 py-3 text-center">
-                <button
-                  (click)="verDetalleVenta(venta)"
-                  class="text-blue-600 hover:text-blue-800 font-semibold text-sm"
-                >
-                  Ver detalle
-                </button>
+                <!-- ✅ NUEVO: Botones de Acción en Tabla -->
+                <div class="flex items-center justify-center gap-2">
+                  <button
+                    (click)="verDetalleVenta(venta)"
+                    class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md transition-colors"
+                    title="Ver detalle"
+                  >
+                    👁️ Detalle
+                  </button>
+
+                  <button
+                    (click)="verTicket(venta)"
+                    class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-md transition-colors"
+                    title="Ver/Imprimir ticket"
+                  >
+                    🧾 Ticket
+                  </button>
+                </div>
               </td>
             </tr>
             }
@@ -398,6 +428,15 @@
   <app-detalle-venta
     [venta]="ventaSeleccionada()!"
     (onCerrar)="cerrarDetalleVenta()"
+    (onVerTicket)="verTicket($event); cerrarDetalleVenta()"
   />
+  <!-- ✅ NUEVO: Conectar evento onVerTicket -->
+  }
+
+  <!-- ============================= -->
+  <!-- MODAL TICKET -->
+  <!-- ============================= -->
+  @if (ventaParaTicket()) {
+  <app-modal-ticket [venta]="ventaParaTicket()!" (onCerrar)="cerrarTicket()" />
   }
 </div>

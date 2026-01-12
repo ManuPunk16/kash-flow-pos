@@ -1255,5 +1255,10 @@
     (onCerrar)="cerrarModalCrearCliente()"
     (onGuardar)="guardarClienteNuevo($event)"
   />
+  } @if (mostrarModalTicket() && ventaParaTicket()) {
+  <app-modal-ticket
+    [venta]="ventaParaTicket()!"
+    (onCerrar)="cerrarModalTicket()"
+  />
   }
 </div>

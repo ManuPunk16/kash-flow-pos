@@ -227,13 +227,12 @@
         Cerrar
       </button>
 
-      <!-- Botón de Reimprimir (futuro) -->
       <button
-        disabled
-        class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors opacity-50 cursor-not-allowed"
-        title="Próximamente"
+        (click)="verTicket()"
+        class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
       >
-        🖨️ Reimprimir Ticket
+        <span>🧾</span>
+        <span>Ver/Imprimir Ticket</span>
       </button>
     </div>
   </div>

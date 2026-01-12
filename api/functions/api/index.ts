@@ -14,6 +14,7 @@ import pagosProveedoresHandler from '../../_lib/handlers/pagos-proveedores.js';
 import reportesHandler from '../../_lib/handlers/reportes.js';
 import categoriasHandler from '../../_lib/handlers/categorias.js';
 import egresosHandler from '../../_lib/handlers/egresos.js';
+import ticketsHandler from '../../_lib/handlers/tickets.js';
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   const { pathname } = new URL(req.url || '', `http://${req.headers.host}`);
@@ -77,7 +78,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       res.status(200).json({
         exito: true,
         mensaje: '✅ KashFlow POS API funcionando',
-        version: '2.6.0', // ✅ Incrementar versión
+        version: '2.7.0', // ✅ INCREMENTAR VERSIÓN
         timestamp: new Date().toISOString(),
         cors: {
           originRecibido: origin,
@@ -87,7 +88,11 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
       return;
     }
 
-    // ✅ Routing
+    // ✅ AGREGAR RUTA DE TICKETS (ANTES de las otras rutas, después del health check)
+    if (pathname.startsWith('/api/tickets'))
+      return await ticketsHandler(req, res);
+
+    // ✅ Routing (sin cambios)
     if (pathname.startsWith('/api/abonos'))
       return await abonosHandler(req, res);
     if (pathname.startsWith('/api/clientes'))

@@ -1,4 +1,5 @@
 import { Schema, model, Document } from 'mongoose';
+import { CategoriaProveedor } from '../enums/categorias-proveedor.enum.js';
 
 export interface IProveedor extends Document {
   nombre: string;
@@ -8,6 +9,7 @@ export interface IProveedor extends Document {
   telefono: string;
   direccion: string;
   nit: string;
+  categorias: CategoriaProveedor[];
   saldoPendiente: number;
   terminoPago: number;
   activo: boolean;
@@ -26,6 +28,11 @@ const proveedorSchema = new Schema<IProveedor>(
     telefono: { type: String },
     direccion: { type: String },
     nit: { type: String, unique: true, sparse: true },
+    categorias: {
+      type: [String],
+      enum: Object.values(CategoriaProveedor),
+      default: [CategoriaProveedor.OTROS],
+    },
     saldoPendiente: { type: Number, default: 0, min: 0 },
     terminoPago: { type: Number, default: 30 },
     activo: { type: Boolean, default: true },
@@ -43,6 +50,7 @@ const proveedorSchema = new Schema<IProveedor>(
 proveedorSchema.index({ nombre: 1 });
 proveedorSchema.index({ activo: 1 });
 proveedorSchema.index({ nit: 1 }, { unique: true, sparse: true });
+proveedorSchema.index({ categorias: 1 });
 
 // ✅ VIRTUAL: Calcular productos en tiempo real
 proveedorSchema.virtual('productosActivos', {

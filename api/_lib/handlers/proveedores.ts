@@ -8,6 +8,7 @@ import {
 import { Proveedor } from '../models/index.js';
 import { Producto } from '../models/index.js';
 import { conectarMongoDB } from '../config/database.js';
+import { CategoriaProveedor } from '../enums/categorias-proveedor.enum.js';
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -49,18 +50,30 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
 
     switch (req.method) {
       case 'GET':
-        // GET /api/proveedores - Obtener todos con conteo real
+        // GET /api/proveedores - Obtener todos con filtros
         if (rutaProveedor === '/' || rutaProveedor === '') {
           console.log('📦 Consultando proveedores...');
           const inicio = Date.now();
 
-          // ✅ Obtener proveedores
-          const proveedores = await Proveedor.find({ activo: true })
+          // ✅ NUEVO: Construir filtros dinámicos
+          const filtros: any = { activo: true };
+
+          // Filtro por categoría desde query params
+          const { categoria } = req.query as { categoria?: string };
+          if (
+            categoria &&
+            Object.values(CategoriaProveedor).includes(
+              categoria as CategoriaProveedor
+            )
+          ) {
+            filtros.categorias = categoria;
+          }
+
+          const proveedores = await Proveedor.find(filtros)
             .select('-__v')
             .lean()
             .maxTimeMS(5000);
 
-          // ✅ Calcular productos por proveedor en paralelo
           const proveedoresConProductos = await Promise.all(
             proveedores.map(async (proveedor) => {
               const conteoProductos = await Producto.countDocuments({

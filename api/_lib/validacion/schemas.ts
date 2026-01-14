@@ -6,6 +6,7 @@ import {
 } from '../enums/index.js';
 import { Cliente } from '../models/Cliente.js'; // ✅ Importar modelo
 import { Proveedor } from '../models/Proveedor.js'; // ✅ Importar modelo
+import { CategoriaProveedor } from '../enums/categorias-proveedor.enum.js';
 
 // ========================================
 // ✅ PRODUCTOS
@@ -135,37 +136,46 @@ export const esquemaCrearAbono = Joi.object({
 // ========================================
 
 export const esquemaCrearProveedor = Joi.object({
-  nombre: Joi.string().required().min(2).max(100).trim(),
-  empresa: Joi.string().optional(),
-  contacto: Joi.string().optional().trim(),
-  email: Joi.string().optional().email().lowercase().trim(),
-  telefono: Joi.string().optional().trim(),
-  direccion: Joi.string().optional().trim(),
-  nit: Joi.string()
-    .optional()
-    .trim()
-    .external(async (valor: string) => {
-      if (!valor) return valor;
-
-      const existente = await Proveedor.findOne({ nit: valor });
-      if (existente) {
-        throw new Error('Ya existe un proveedor con este NIT');
-      }
-      return valor;
+  nombre: Joi.string().trim().min(3).max(100).required().messages({
+    'string.empty': 'El nombre es obligatorio',
+    'string.min': 'El nombre debe tener al menos 3 caracteres',
+    'string.max': 'El nombre no puede exceder 100 caracteres',
+  }),
+  empresa: Joi.string().trim().max(100).allow('', null),
+  contacto: Joi.string().trim().max(100).allow('', null),
+  email: Joi.string().trim().email().lowercase().allow('', null).messages({
+    'string.email': 'Email inválido',
+  }),
+  telefono: Joi.string().trim().max(20).allow('', null),
+  direccion: Joi.string().trim().max(255).allow('', null),
+  nit: Joi.string().trim().max(50).allow('', null),
+  categorias: Joi.array()
+    .items(Joi.string().valid(...Object.values(CategoriaProveedor)))
+    .min(1)
+    .default([CategoriaProveedor.OTROS])
+    .messages({
+      'array.min': 'Debe seleccionar al menos una categoría',
     }),
-  terminoPago: Joi.number().optional().min(0).integer().default(30),
+  terminoPago: Joi.number().integer().min(1).max(365).default(30).messages({
+    'number.min': 'El término de pago debe ser al menos 1 día',
+    'number.max': 'El término de pago no puede exceder 365 días',
+  }),
 });
 
 export const esquemaActualizarProveedor = Joi.object({
-  nombre: Joi.string().optional().min(2).max(100).trim(),
-  contacto: Joi.string().optional().trim(),
-  email: Joi.string().optional().email().lowercase().trim(),
-  telefono: Joi.string().optional().trim(),
-  direccion: Joi.string().optional().trim(),
-  nit: Joi.string().optional().trim(),
-  terminoPago: Joi.number().optional().min(0).integer(),
-  activo: Joi.boolean().optional(),
-});
+  nombre: Joi.string().trim().min(3).max(100),
+  empresa: Joi.string().trim().max(100).allow('', null),
+  contacto: Joi.string().trim().max(100).allow('', null),
+  email: Joi.string().trim().email().lowercase().allow('', null),
+  telefono: Joi.string().trim().max(20).allow('', null),
+  direccion: Joi.string().trim().max(255).allow('', null),
+  nit: Joi.string().trim().max(50).allow('', null),
+  categorias: Joi.array()
+    .items(Joi.string().valid(...Object.values(CategoriaProveedor)))
+    .min(1),
+  terminoPago: Joi.number().integer().min(1).max(365),
+  activo: Joi.boolean(),
+}).min(1);
 
 // ========================================
 // ✅ PAGOS A PROVEEDORES

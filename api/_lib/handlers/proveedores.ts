@@ -6,9 +6,10 @@ import {
   esquemaActualizarProveedor,
 } from '../validacion/schemas.js';
 import { Proveedor } from '../models/index.js';
-import { Producto } from '../models/index.js';
 import { conectarMongoDB } from '../config/database.js';
 import { CategoriaProveedor } from '../enums/categorias-proveedor.enum.js';
+import { Producto } from '../models/Producto.js';
+import { Venta } from '../models/Venta.js';
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -141,7 +142,125 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
-        // GET /api/proveedores/[id]
+        // ✅ NUEVO: GET /api/proveedores/[id]/productos
+        if (rutaProveedor.includes('/productos')) {
+          const proveedorId = rutaProveedor.split('/')[1];
+
+          console.log('🔍 Debug productos por proveedor:', {
+            rutaCompleta: rutaProveedor,
+            proveedorIdExtraido: proveedorId,
+            esValidoObjectId: /^[0-9a-fA-F]{24}$/.test(proveedorId),
+          });
+
+          if (!proveedorId || !/^[0-9a-fA-F]{24}$/.test(proveedorId)) {
+            res.status(400).json({
+              exito: false,
+              error: 'ID de proveedor inválido',
+              debug: {
+                rutaRecibida: rutaProveedor,
+                idExtraido: proveedorId,
+                formatoEsperado: '24 caracteres hexadecimales',
+              },
+            });
+            return;
+          }
+
+          // Verificar que el proveedor existe
+          const proveedor = await Proveedor.findById(proveedorId).lean();
+
+          if (!proveedor) {
+            res.status(404).json({
+              exito: false,
+              error: 'Proveedor no encontrado',
+            });
+            return;
+          }
+
+          console.log(
+            `📦 Consultando productos del proveedor: ${proveedor.nombre}`
+          );
+          const inicio = Date.now();
+
+          // Obtener productos del proveedor
+          const productos = await Producto.find({
+            proveedorId: proveedorId,
+            activo: true,
+          })
+            .select('-__v')
+            .lean()
+            .maxTimeMS(5000);
+
+          // Calcular métricas por producto
+          const productosConMetricas = await Promise.all(
+            productos.map(async (producto) => {
+              // Ventas del producto (últimos 30 días)
+              const hace30Dias = new Date();
+              hace30Dias.setDate(hace30Dias.getDate() - 30);
+
+              const ventas = await Venta.find({
+                'items.productoId': producto._id,
+                fechaVenta: { $gte: hace30Dias },
+              })
+                .select('items')
+                .lean();
+
+              let cantidadVendida = 0;
+              let ingresoTotal = 0;
+
+              ventas.forEach((venta) => {
+                const item = venta.items.find(
+                  (i: any) =>
+                    i.productoId.toString() === producto._id.toString()
+                );
+                if (item) {
+                  cantidadVendida += item.cantidad;
+                  ingresoTotal += item.subtotal;
+                }
+              });
+
+              // Calcular rotación (ventas / stock actual)
+              const rotacion =
+                producto.stock > 0 ? cantidadVendida / producto.stock : 0;
+
+              return {
+                ...producto,
+                metricas: {
+                  cantidadVendida,
+                  ingresoTotal,
+                  rotacion: Math.round(rotacion * 100) / 100,
+                  margenGanancia:
+                    producto.precioVenta > 0
+                      ? Math.round(
+                          ((producto.precioVenta - producto.costoUnitario) /
+                            producto.precioVenta) *
+                            100
+                        )
+                      : 0,
+                },
+              };
+            })
+          );
+
+          const duracion = Date.now() - inicio;
+          console.log(
+            `✅ Productos obtenidos: ${productosConMetricas.length} en ${duracion}ms`
+          );
+
+          res.status(200).json({
+            exito: true,
+            datos: productosConMetricas,
+            cantidad: productosConMetricas.length,
+            proveedor: {
+              id: proveedor._id,
+              nombre: proveedor.nombre,
+              nit: proveedor.nit,
+            },
+            tiempoConsulta: `${duracion}ms`,
+          });
+          return;
+        }
+
+        // GET /api/proveedores/[id] (DEBE estar DESPUÉS del endpoint /productos)
         const proveedorId = rutaProveedor.replace('/', '');
 
         if (proveedorId && /^[0-9a-fA-F]{24}$/.test(proveedorId)) {
@@ -158,7 +277,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
             return;
           }
 
-          // ✅ Calcular productos del proveedor
+          // Calcular productos del proveedor
           const conteoProductos = await Producto.countDocuments({
             proveedorId: proveedor._id,
             activo: true,

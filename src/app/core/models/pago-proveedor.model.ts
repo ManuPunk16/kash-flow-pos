@@ -1,3 +1,5 @@
+import { MetodoPago } from '@core/enums';
+
 export interface PagoProveedor {
   _id: string;
   proveedorId: string;
@@ -5,25 +7,30 @@ export interface PagoProveedor {
   usuarioId: string;
   nombreUsuario: string;
   monto: number;
-  metodoPago: 'efectivo' | 'transferencia' | 'cheque';
+  metodoPago: MetodoPago;
   referenciaPago?: string;
   saldoAnterior: number;
   nuevoSaldo: number;
   observaciones?: string;
   comprobante?: string;
   estado: 'pagado' | 'pendiente';
-  fechaPago: Date;
-  fechaCreacion: Date;
+  fechaPago: string;
+  fechaCreacion: string;
 }
 
-/**
- * DTO para registrar pago
- */
-export interface RegistrarPagoProveedorDTO {
+export interface CrearPagoProveedorDTO {
   proveedorId: string;
   monto: number;
-  metodoPago: 'efectivo' | 'transferencia' | 'cheque';
+  metodoPago: MetodoPago;
   referenciaPago?: string;
   observaciones?: string;
   comprobante?: string;
+  fechaPago?: Date;
+}
+
+export interface RespuestaHistorialPagos {
+  exito: boolean;
+  datos: PagoProveedor[];
+  cantidad: number;
+  totalPagado: number;
 }

@@ -8,17 +8,30 @@
       <h3 class="text-lg font-bold text-gray-900 flex-1">
         {{ proveedor().nombre }}
       </h3>
-      @if (proveedor().empresa) {
-      <p class="text-sm text-gray-600 mt-1">🏢 {{ proveedor().empresa }}</p>
-      } @if (tieneDeuda()) {
+      @if (tieneDeuda()) {
       <span class="text-2xl" title="Tiene deuda pendiente">⚠️</span>
       } @else {
       <span class="text-2xl" title="Al día">✅</span>
       }
     </div>
 
-    @if (proveedor().contacto) {
-    <p class="text-sm text-gray-600 mb-1">
+    @if (proveedor().empresa) {
+    <p class="text-sm text-gray-600 mb-2">🏢 {{ proveedor().empresa }}</p>
+    }
+
+    <!-- ✅ NUEVO: Mostrar categorías -->
+    @if (proveedor().categorias && proveedor().categorias.length > 0) {
+    <div class="flex flex-wrap gap-2 mt-3">
+      @for (categoria of proveedor().categorias; track categoria) {
+      <span
+        [class]="'px-2 py-1 rounded-full text-xs font-semibold ' + coloresCategorias[categoria]"
+      >
+        {{ etiquetasCategorias[categoria] }}
+      </span>
+      }
+    </div>
+    } @if (proveedor().contacto) {
+    <p class="text-sm text-gray-600 mb-1 mt-3">
       <span class="font-medium">👤 Contacto:</span>
       {{ proveedor().contacto }}
     </p>
@@ -26,11 +39,6 @@
     <p class="text-sm text-gray-600 mb-1">
       <span class="font-medium">📞</span>
       {{ proveedor().telefono }}
-    </p>
-    } @if (proveedor().email) {
-    <p class="text-sm text-gray-600 mb-1">
-      <span class="font-medium">📧</span>
-      {{ proveedor().email }}
     </p>
     } @if (proveedor().nit) {
     <p class="text-sm text-gray-600">
@@ -84,21 +92,31 @@
 
   <!-- Acciones -->
   <div class="p-4 bg-white border-t border-gray-100">
-    <div class="flex gap-2">
+    <!-- ✅ MODIFICAR: Agregar botón "Ver Detalle" -->
+    <div class="flex flex-col gap-2">
       <button
-        (click)="editar()"
-        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+        (click)="verDetalle()"
+        class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
       >
-        <span>✏️</span>
-        <span>Editar</span>
+        <span>👁️</span>
+        <span>Ver Detalle</span>
       </button>
-      <button
-        (click)="eliminar()"
-        class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
-        title="Eliminar"
-      >
-        🗑️
-      </button>
+      <div class="flex gap-2">
+        <button
+          (click)="editar()"
+          class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+        >
+          <span>✏️</span>
+          <span>Editar</span>
+        </button>
+        <button
+          (click)="eliminar()"
+          class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+          title="Eliminar"
+        >
+          🗑️
+        </button>
+      </div>
     </div>
   </div>
 </div>

@@ -193,6 +193,7 @@
       [proveedor]="proveedor"
       (onEditar)="abrirModalEditar($event)"
       (onEliminar)="eliminarProveedor($event)"
+      (onVerDetalle)="abrirDetalle($event)"
     />
     }
   </section>
@@ -306,5 +307,14 @@
   [modoEdicion]="modoEdicion()"
   (onCerrar)="cerrarModal()"
   (onGuardar)="guardarProveedor($event)"
+/>
+}
+
+<!-- ✅ NUEVO: Modal de Detalle del Proveedor -->
+@if (mostrarDetalle() && proveedorSeleccionado()) {
+<app-detalle-proveedor
+  [proveedor]="proveedorSeleccionado()!"
+  (onCerrar)="cerrarDetalle()"
+  (onActualizar)="actualizarDespuesPago()"
 />
 }

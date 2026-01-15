@@ -1,3 +1,5 @@
+import { CategoriaProveedor } from '@core/enums';
+
 export interface Proveedor {
   _id: string;
   nombre: string;
@@ -7,6 +9,7 @@ export interface Proveedor {
   telefono?: string;
   direccion?: string;
   nit?: string;
+  categorias: CategoriaProveedor[];
   saldoPendiente: number;
   terminoPago: number;
   activo: boolean;
@@ -24,6 +27,7 @@ export interface CrearProveedorDTO {
   telefono?: string;
   direccion?: string;
   nit?: string;
+  categorias?: CategoriaProveedor[];
   terminoPago?: number;
 }
 

@@ -12,6 +12,7 @@ import { ProveedoresService } from '@core/services/proveedores.service';
 import { Proveedor, CrearProveedorDTO } from '@core/models/proveedor.model';
 import { TarjetaProveedorComponent } from './components/tarjeta-proveedor/tarjeta-proveedor';
 import { ModalProveedorComponent } from './components/modal-proveedor/modal-proveedor';
+import { DetalleProveedorComponent } from './components/detalle-proveedor/detalle-proveedor'; // ✅ NUEVO
 
 type VistaProveedores = 'grid' | 'tabla';
 
@@ -25,6 +26,7 @@ type VistaProveedores = 'grid' | 'tabla';
     FormsModule,
     TarjetaProveedorComponent,
     ModalProveedorComponent,
+    DetalleProveedorComponent, // ✅ NUEVO
   ],
 })
 export class Proveedores implements OnInit {
@@ -39,6 +41,7 @@ export class Proveedores implements OnInit {
   protected readonly mostrarModal = signal(false);
   protected readonly proveedorSeleccionado = signal<Proveedor | null>(null);
   protected readonly modoEdicion = signal(false);
+  protected readonly mostrarDetalle = signal(false); // ✅ NUEVO
 
   // Estado derivado (computado)
   protected readonly proveedoresFiltrados = computed(() => {
@@ -114,6 +117,23 @@ export class Proveedores implements OnInit {
     this.mostrarModal.set(false);
     this.proveedorSeleccionado.set(null);
     this.modoEdicion.set(false);
+  }
+
+  // ✅ NUEVO: Abrir vista detalle
+  protected abrirDetalle(proveedor: Proveedor): void {
+    this.proveedorSeleccionado.set(proveedor);
+    this.mostrarDetalle.set(true);
+  }
+
+  // ✅ NUEVO: Cerrar vista detalle
+  protected cerrarDetalle(): void {
+    this.mostrarDetalle.set(false);
+    this.proveedorSeleccionado.set(null);
+  }
+
+  // ✅ NUEVO: Actualizar después de un pago
+  protected actualizarDespuesPago(): void {
+    this.cargarProveedores();
   }
 
   protected guardarProveedor(datos: CrearProveedorDTO): void {

@@ -1,0 +1,26 @@
+:host {
+  display: block;
+}
+
+/* Animación de entrada para cada pago */
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.space-y-4 > div {
+  animation: slideInFromLeft 0.3s ease-out;
+}
+
+/* Efecto hover mejorado */
+.hover\:bg-gray-100:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
+  transition: all 0.2s ease-in-out;
+}

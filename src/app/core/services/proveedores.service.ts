@@ -10,6 +10,7 @@ import {
   CrearProveedorDTO,
   ActualizarProveedorDTO,
 } from '@core/models/proveedor.model';
+import { Producto } from '@core/models/producto.model';
 import { environment } from '@environments/environment';
 
 interface RespuestaAPI<T> {
@@ -17,6 +18,26 @@ interface RespuestaAPI<T> {
   mensaje?: string;
   datos?: T;
   total?: number;
+}
+
+interface ProductoConMetricas extends Producto {
+  metricas: {
+    cantidadVendida: number;
+    ingresoTotal: number;
+    rotacion: number;
+    margenGanancia: number;
+  };
+}
+
+interface RespuestaProductosProveedor {
+  exito: boolean;
+  datos: ProductoConMetricas[];
+  cantidad: number;
+  proveedor: {
+    id: string;
+    nombre: string;
+    nit?: string;
+  };
 }
 
 @Injectable({
@@ -109,6 +130,33 @@ export class ProveedoresService {
       }),
       catchError(this.manejarError)
     );
+  }
+
+  /**
+   * ✅ NUEVO: Obtener productos de un proveedor específico con métricas
+   */
+  obtenerProductosPorProveedor(
+    proveedorId: string
+  ): Observable<RespuestaProductosProveedor> {
+    return this.http
+      .get<RespuestaProductosProveedor>(
+        `${this.apiUrl}/${proveedorId}/productos`
+      )
+      .pipe(
+        map((respuesta) => {
+          if (respuesta.exito) {
+            return respuesta;
+          }
+          throw new Error('Error al obtener productos del proveedor');
+        }),
+        tap((resultado) => {
+          console.log(
+            `✅ Productos cargados para proveedor ${resultado.proveedor.nombre}:`,
+            resultado.cantidad
+          );
+        }),
+        catchError(this.manejarError)
+      );
   }
 
   private manejarError(error: HttpErrorResponse): Observable<never> {

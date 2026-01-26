@@ -16,7 +16,8 @@ import { environment } from '@environments/environment';
 interface RespuestaAPI<T> {
   exito: boolean;
   mensaje?: string;
-  datos?: T;
+  dato?: T; // ✅ SINGULAR para operaciones individuales
+  datos?: T; // ✅ PLURAL para listas
   total?: number;
 }
 
@@ -67,54 +68,62 @@ export class ProveedoresService {
         console.log('✅ Proveedores cargados:', proveedores.length);
         this.proveedoresCache.set(proveedores);
       }),
-      catchError(this.manejarError)
+      catchError(this.manejarError),
     );
   }
 
   obtenerProveedorPorId(id: string): Observable<Proveedor> {
     return this.http.get<RespuestaAPI<Proveedor>>(`${this.apiUrl}/${id}`).pipe(
       map((respuesta) => {
-        if (respuesta.exito && respuesta.datos) {
-          return respuesta.datos;
+        // ✅ CORREGIDO: Usar 'dato' (singular)
+        if (respuesta.exito && respuesta.dato) {
+          return respuesta.dato;
         }
         throw new Error('Proveedor no encontrado');
       }),
-      catchError(this.manejarError)
+      catchError(this.manejarError),
     );
   }
 
   crearProveedor(proveedor: CrearProveedorDTO): Observable<Proveedor> {
     return this.http.post<RespuestaAPI<Proveedor>>(this.apiUrl, proveedor).pipe(
       map((respuesta) => {
-        if (respuesta.exito && respuesta.datos) {
-          return respuesta.datos;
+        // ✅ CORREGIDO: Usar 'dato' (singular)
+        if (respuesta.exito && respuesta.dato) {
+          console.log('✅ Proveedor creado exitosamente:', respuesta.dato);
+          return respuesta.dato;
         }
-        throw new Error('Error al crear proveedor');
+        throw new Error(respuesta.mensaje || 'Error al crear proveedor');
       }),
       tap(() => {
         this.obtenerProveedores().subscribe();
       }),
-      catchError(this.manejarError)
+      catchError(this.manejarError),
     );
   }
 
   actualizarProveedor(
     id: string,
-    cambios: ActualizarProveedorDTO
+    cambios: ActualizarProveedorDTO,
   ): Observable<Proveedor> {
     return this.http
       .put<RespuestaAPI<Proveedor>>(`${this.apiUrl}/${id}`, cambios)
       .pipe(
         map((respuesta) => {
-          if (respuesta.exito && respuesta.datos) {
-            return respuesta.datos;
+          // ✅ CORREGIDO: Usar 'dato' (singular)
+          if (respuesta.exito && respuesta.dato) {
+            console.log(
+              '✅ Proveedor actualizado exitosamente:',
+              respuesta.dato,
+            );
+            return respuesta.dato;
           }
-          throw new Error('Error al actualizar proveedor');
+          throw new Error(respuesta.mensaje || 'Error al actualizar proveedor');
         }),
         tap(() => {
           this.obtenerProveedores().subscribe();
         }),
-        catchError(this.manejarError)
+        catchError(this.manejarError),
       );
   }
 
@@ -128,19 +137,16 @@ export class ProveedoresService {
       tap(() => {
         this.obtenerProveedores().subscribe();
       }),
-      catchError(this.manejarError)
+      catchError(this.manejarError),
     );
   }
 
-  /**
-   * ✅ NUEVO: Obtener productos de un proveedor específico con métricas
-   */
   obtenerProductosPorProveedor(
-    proveedorId: string
+    proveedorId: string,
   ): Observable<RespuestaProductosProveedor> {
     return this.http
       .get<RespuestaProductosProveedor>(
-        `${this.apiUrl}/${proveedorId}/productos`
+        `${this.apiUrl}/${proveedorId}/productos`,
       )
       .pipe(
         map((respuesta) => {
@@ -152,10 +158,10 @@ export class ProveedoresService {
         tap((resultado) => {
           console.log(
             `✅ Productos cargados para proveedor ${resultado.proveedor.nombre}:`,
-            resultado.cantidad
+            resultado.cantidad,
           );
         }),
-        catchError(this.manejarError)
+        catchError(this.manejarError),
       );
   }
 
@@ -169,6 +175,19 @@ export class ProveedoresService {
     } else {
       if (error.error?.mensaje) {
         mensajeError = error.error.mensaje;
+      } else if (error.error?.error) {
+        // ✅ AGREGAR: Capturar mensaje de error de validación
+        if (typeof error.error.error === 'string') {
+          mensajeError = error.error.error;
+        }
+
+        // ✅ AGREGAR: Capturar detalles de validación
+        if (error.error.detalles && Array.isArray(error.error.detalles)) {
+          const detallesFormateados = error.error.detalles
+            .map((d: any) => `${d.campo}: ${d.mensaje}`)
+            .join(', ');
+          mensajeError = `Validación fallida: ${detallesFormateados}`;
+        }
       } else if (error.error?.message) {
         mensajeError = error.error.message;
       } else if (error.message) {

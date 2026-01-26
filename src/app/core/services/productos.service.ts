@@ -11,7 +11,8 @@ import { environment } from '@environments/environment';
 interface RespuestaAPI<T> {
   exito: boolean;
   mensaje?: string;
-  datos?: T;
+  dato?: T; // ✅ SINGULAR para operaciones individuales
+  datos?: T; // ✅ PLURAL para listas
   total?: number;
 }
 
@@ -73,7 +74,7 @@ export class ProductosService {
           console.log('✅ Productos cargados:', productos.length);
           this.productosCache.set(productos);
         }),
-        catchError(this.manejarError)
+        catchError(this.manejarError),
       );
   }
 
@@ -84,56 +85,64 @@ export class ProductosService {
           this.productosCache.set(respuesta.datos);
         }
       }),
-      catchError(this.manejarError)
+      catchError(this.manejarError),
     );
   }
 
   obtenerProductoPorId(id: string): Observable<Producto> {
     return this.http.get<RespuestaAPI<Producto>>(`${this.apiUrl}/${id}`).pipe(
       map((respuesta) => {
-        if (respuesta.exito && respuesta.datos) {
-          return respuesta.datos;
+        // ✅ CORREGIDO: Usar 'dato' (singular)
+        if (respuesta.exito && respuesta.dato) {
+          return respuesta.dato;
         }
         throw new Error('Producto no encontrado');
       }),
-      catchError(this.manejarError)
+      catchError(this.manejarError),
     );
   }
 
   crearProducto(producto: Partial<Producto>): Observable<Producto> {
     return this.http.post<RespuestaAPI<Producto>>(this.apiUrl, producto).pipe(
       map((respuesta) => {
-        if (respuesta.exito && respuesta.datos) {
-          return respuesta.datos;
+        // ✅ CORREGIDO: Usar 'dato' (singular)
+        if (respuesta.exito && respuesta.dato) {
+          console.log('✅ Producto creado exitosamente:', respuesta.dato);
+          return respuesta.dato;
         }
-        throw new Error('Error al crear producto');
+        throw new Error(respuesta.mensaje || 'Error al crear producto');
       }),
       tap(() => {
         // Recargar lista después de crear
         this.obtenerProductos().subscribe();
       }),
-      catchError(this.manejarError)
+      catchError(this.manejarError),
     );
   }
 
   actualizarProducto(
     id: string,
-    cambios: Partial<Producto>
+    cambios: Partial<Producto>,
   ): Observable<Producto> {
     return this.http
       .put<RespuestaAPI<Producto>>(`${this.apiUrl}/${id}`, cambios)
       .pipe(
         map((respuesta) => {
-          if (respuesta.exito && respuesta.datos) {
-            return respuesta.datos;
+          // ✅ CORREGIDO: Usar 'dato' (singular)
+          if (respuesta.exito && respuesta.dato) {
+            console.log(
+              '✅ Producto actualizado exitosamente:',
+              respuesta.dato,
+            );
+            return respuesta.dato;
           }
-          throw new Error('Error al actualizar producto');
+          throw new Error(respuesta.mensaje || 'Error al actualizar producto');
         }),
         tap(() => {
           // Recargar lista después de actualizar
           this.obtenerProductos().subscribe();
         }),
-        catchError(this.manejarError)
+        catchError(this.manejarError),
       );
   }
 
@@ -148,7 +157,7 @@ export class ProductosService {
         // Recargar lista después de eliminar
         this.obtenerProductos().subscribe();
       }),
-      catchError(this.manejarError)
+      catchError(this.manejarError),
     );
   }
 
@@ -159,12 +168,13 @@ export class ProductosService {
       })
       .pipe(
         map((respuesta) => {
-          if (respuesta.exito && respuesta.datos) {
-            return respuesta.datos;
+          // ✅ CORREGIDO: Usar 'dato' (singular)
+          if (respuesta.exito && respuesta.dato) {
+            return respuesta.dato;
           }
           throw new Error('Error al ajustar stock');
         }),
-        catchError(this.manejarError)
+        catchError(this.manejarError),
       );
   }
 
@@ -180,8 +190,19 @@ export class ProductosService {
       // Error del lado del servidor
       if (error.error?.mensaje) {
         mensajeError = error.error.mensaje;
-      } else if (error.error?.message) {
-        mensajeError = error.error.message;
+      } else if (error.error?.error) {
+        // ✅ AGREGAR: Capturar mensaje de error de validación
+        if (typeof error.error.error === 'string') {
+          mensajeError = error.error.error;
+        }
+
+        // ✅ AGREGAR: Capturar detalles de validación
+        if (error.error.detalles && Array.isArray(error.error.detalles)) {
+          const detallesFormateados = error.error.detalles
+            .map((d: any) => `${d.campo}: ${d.mensaje}`)
+            .join(', ');
+          mensajeError = `Validación fallida: ${detallesFormateados}`;
+        }
       } else if (error.message) {
         mensajeError = error.message;
       } else {

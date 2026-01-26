@@ -4,8 +4,8 @@ import {
   METODOS_PAGO_VALORES,
   CATEGORIAS_EGRESO_VALORES,
 } from '../enums/index.js';
-import { Cliente } from '../models/Cliente.js'; // ✅ Importar modelo
-import { Proveedor } from '../models/Proveedor.js'; // ✅ Importar modelo
+import { Cliente } from '../models/Cliente.js';
+import { Proveedor } from '../models/Proveedor.js';
 import { CategoriaProveedor } from '../enums/categorias-proveedor.enum.js';
 
 // ========================================
@@ -21,7 +21,13 @@ export const esquemaCrearProducto = Joi.object({
   stock: Joi.number().required().min(0).integer(),
   stockMinimo: Joi.number().optional().min(0).integer().default(5),
   esConsignacion: Joi.boolean().optional().default(false),
-  proveedorId: Joi.string().optional().hex().length(24),
+
+  // ✅ PERMITIR null ADEMÁS DE string
+  proveedorId: Joi.string().optional().allow(null).hex().length(24).messages({
+    'string.hex': 'El ID del proveedor debe ser un ObjectId válido',
+    'string.length': 'El ID del proveedor debe tener 24 caracteres',
+  }),
+
   categoria: Joi.string()
     .required()
     .valid(...CATEGORIAS_PRODUCTO_VALORES),
@@ -38,7 +44,10 @@ export const esquemaActualizarProducto = Joi.object({
   stock: Joi.number().optional().min(0).integer(),
   stockMinimo: Joi.number().optional().min(0).integer(),
   esConsignacion: Joi.boolean().optional(),
+
+  // ✅ YA PERMITE null (está correcto)
   proveedorId: Joi.string().optional().allow(null).hex().length(24),
+
   categoria: Joi.string()
     .optional()
     .valid(...CATEGORIAS_PRODUCTO_VALORES),
@@ -52,7 +61,7 @@ export const esquemaRegistroRapidoProducto = Joi.object({
 });
 
 // ========================================
-// ✅ CLIENTES
+// ✅ CLIENTES (sin cambios)
 // ========================================
 
 export const esquemaCrearCliente = Joi.object({
@@ -86,7 +95,7 @@ export const esquemaActualizarCliente = Joi.object({
 });
 
 // ========================================
-// ✅ VENTAS
+// ✅ VENTAS (sin cambios)
 // ========================================
 
 export const esquemaCrearVenta = Joi.object({
@@ -104,7 +113,7 @@ export const esquemaCrearVenta = Joi.object({
         subtotal: Joi.number().required().min(0),
         ganancia: Joi.number().required().min(0),
         esConsignacion: Joi.boolean().default(false),
-      })
+      }),
     ),
   metodoPago: Joi.string()
     .required()
@@ -115,7 +124,7 @@ export const esquemaCrearVenta = Joi.object({
 });
 
 // ========================================
-// ✅ ABONOS
+// ✅ ABONOS (sin cambios)
 // ========================================
 
 export const esquemaCrearAbono = Joi.object({
@@ -132,7 +141,7 @@ export const esquemaCrearAbono = Joi.object({
 });
 
 // ========================================
-// ✅ PROVEEDORES
+// ✅ PROVEEDORES (sin cambios)
 // ========================================
 
 export const esquemaCrearProveedor = Joi.object({
@@ -178,7 +187,7 @@ export const esquemaActualizarProveedor = Joi.object({
 }).min(1);
 
 // ========================================
-// ✅ PAGOS A PROVEEDORES
+// ✅ PAGOS A PROVEEDORES (sin cambios)
 // ========================================
 
 export const esquemaCrearPagoProveedor = Joi.object({
@@ -196,7 +205,7 @@ export const esquemaCrearPagoProveedor = Joi.object({
 });
 
 // ========================================
-// ✅ EGRESOS
+// ✅ EGRESOS (sin cambios)
 // ========================================
 
 export const esquemaCrearEgreso = Joi.object({

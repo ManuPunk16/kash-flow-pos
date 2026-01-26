@@ -5,7 +5,7 @@ export const environment = {
 
   nombreNegocio: '',
   direccionNegocio: 'La tiendita de tu corazón',
-  telefonoNegocio: '',
+  telefonoNegocio: '(981) 204 0744',
   emailNegocio: '',
   rfcNegocio: '',
   logoNegocio: null,

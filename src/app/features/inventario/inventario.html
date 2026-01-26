@@ -17,7 +17,7 @@
         </div>
         <div>
           <p class="text-sm text-gray-600">Total</p>
-          <p class="text-2xl font-bold text-gray-900">
+          <p class="text-2xl font-bold text-blue-600">
             {{ estadisticas().total }}
           </p>
         </div>
@@ -75,20 +75,49 @@
       </div>
     </div>
 
-    <!-- Valor Inventario -->
+    <!-- ✅ MEJORADO: Valor Inventario con Tooltip Detallado -->
     <div
-      class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+      class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative group"
     >
       <div class="flex items-center gap-3">
         <div class="p-3 bg-green-100 rounded-lg">
           <span class="text-2xl">💰</span>
         </div>
         <div>
-          <p class="text-sm text-gray-600">Valor</p>
-          <p class="text-lg font-bold text-green-600">
-            {{ formatearMoneda(estadisticas().valorInventario) }}
+          <p class="text-sm text-gray-600">Valor (Costo)</p>
+          <p class="text-xl font-bold text-green-600">
+            {{ formatearMoneda(estadisticas().valorInventarioCosto) }}
           </p>
         </div>
+      </div>
+
+      <!-- ✅ NUEVO: Tooltip con información detallada -->
+      <div
+        class="absolute hidden group-hover:block bg-gray-900 text-white text-xs rounded-lg p-3 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 z-10"
+      >
+        <div class="space-y-1">
+          <div class="flex justify-between">
+            <span>💸 Costo total:</span>
+            <span class="font-semibold"
+              >{{ formatearMoneda(estadisticas().valorInventarioCosto) }}</span
+            >
+          </div>
+          <div class="flex justify-between">
+            <span>💵 Valor de venta:</span>
+            <span class="font-semibold"
+              >{{ formatearMoneda(estadisticas().valorInventarioVenta) }}</span
+            >
+          </div>
+          <div class="flex justify-between border-t border-gray-700 pt-1">
+            <span>📈 Ganancia potencial:</span>
+            <span class="font-bold text-green-400"
+              >{{ formatearMoneda(estadisticas().gananciaPotencial) }}</span
+            >
+          </div>
+        </div>
+        <div
+          class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-gray-900"
+        ></div>
       </div>
     </div>
   </div>

@@ -70,13 +70,13 @@ export class Inventario implements OnInit {
   // Preferencias (sincronizadas con localStorage)
   protected readonly preferencias = this.preferenciasService.preferencias;
   protected readonly vistaActual = computed(
-    () => this.preferencias().inventario.vistaActual
+    () => this.preferencias().inventario.vistaActual,
   );
   protected readonly mostrarProveedores = computed(
-    () => this.preferencias().inventario.mostrarProveedores
+    () => this.preferencias().inventario.mostrarProveedores,
   );
   protected readonly mostrarCodigosBarras = computed(
-    () => this.preferencias().inventario.mostrarCodigosBarras
+    () => this.preferencias().inventario.mostrarCodigosBarras,
   );
 
   // ✅ MEJORADO: Usar catálogo desde enum
@@ -108,28 +108,28 @@ export class Inventario implements OnInit {
           p.nombre.toLowerCase().includes(terminoBusqueda) ||
           p.descripcion.toLowerCase().includes(terminoBusqueda) ||
           p.codigoBarras?.toLowerCase().includes(terminoBusqueda) ||
-          p.proveedor?.nombre.toLowerCase().includes(terminoBusqueda)
+          p.proveedor?.nombre.toLowerCase().includes(terminoBusqueda),
       );
     }
 
     // Filtro de categoría
     if (this.categoriaSeleccionada() !== 'todas') {
       resultado = resultado.filter(
-        (p) => p.categoria === this.categoriaSeleccionada()
+        (p) => p.categoria === this.categoriaSeleccionada(),
       );
     }
 
     // Filtro de proveedor
     if (this.proveedorSeleccionado() !== 'todos') {
       resultado = resultado.filter(
-        (p) => p.proveedorId === this.proveedorSeleccionado()
+        (p) => p.proveedorId === this.proveedorSeleccionado(),
       );
     }
 
     // Filtro de stock bajo
     if (this.soloStockBajo()) {
       resultado = resultado.filter(
-        (p) => p.stock <= p.stockMinimo && p.stock > 0
+        (p) => p.stock <= p.stockMinimo && p.stock > 0,
       );
     }
 
@@ -145,16 +145,18 @@ export class Inventario implements OnInit {
   protected readonly estadisticas = computed(() => {
     const prods = this.productos();
 
-    if (!Array.isArray(prods)) {
-      console.error('⚠️ productos() no es un array en estadísticas:', prods);
-      return {
-        total: 0,
-        stockBajo: 0,
-        sinStock: 0,
-        consignacion: 0,
-        valorInventario: 0,
-      };
-    }
+    // ✅ NUEVO: Calcular valor de venta y ganancia potencial
+    const valorCosto = prods.reduce(
+      (sum, p) => sum + p.costoUnitario * p.stock,
+      0,
+    );
+
+    const valorVenta = prods.reduce(
+      (sum, p) => sum + p.precioVenta * p.stock,
+      0,
+    );
+
+    const gananciaPotencial = valorVenta - valorCosto;
 
     return {
       total: prods.length,
@@ -162,10 +164,11 @@ export class Inventario implements OnInit {
         .length,
       sinStock: prods.filter((p) => p.stock === 0).length,
       consignacion: prods.filter((p) => p.esConsignacion).length,
-      valorInventario: prods.reduce(
-        (sum, p) => sum + p.costoUnitario * p.stock,
-        0
-      ),
+
+      // ✅ MEJORADO: Tres valores diferentes
+      valorInventarioCosto: valorCosto, // Lo que pagaste
+      valorInventarioVenta: valorVenta, // Lo que vale si vendes todo
+      gananciaPotencial: gananciaPotencial, // Diferencia
     };
   });
 
@@ -223,13 +226,13 @@ export class Inventario implements OnInit {
 
   protected toggleMostrarProveedores(): void {
     this.preferenciasService.actualizarMostrarProveedores(
-      !this.mostrarProveedores()
+      !this.mostrarProveedores(),
     );
   }
 
   protected toggleMostrarCodigosBarras(): void {
     this.preferenciasService.actualizarMostrarCodigosBarras(
-      !this.mostrarCodigosBarras()
+      !this.mostrarCodigosBarras(),
     );
   }
 

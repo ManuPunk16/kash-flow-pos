@@ -14,11 +14,11 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
   res.setHeader(
     'Access-Control-Allow-Methods',
-    'GET,OPTIONS,PATCH,DELETE,POST,PUT'
+    'GET,OPTIONS,PATCH,DELETE,POST,PUT',
   );
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization',
   );
 
   if (req.method === 'OPTIONS') {
@@ -98,41 +98,46 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         return;
 
       case 'POST':
-        const { error, value } = esquemaCrearCliente.validate(req.body, {
-          abortEarly: false,
-          stripUnknown: true,
-        });
+        // ✅ CORREGIDO: Usar validateAsync() para esquemas con .external()
+        try {
+          const value = await esquemaCrearCliente.validateAsync(req.body, {
+            abortEarly: false,
+            stripUnknown: true,
+          });
 
-        if (error) {
-          res.status(400).json({
-            exito: false,
-            error: 'Validación fallida',
-            detalles: error.details.map((d) => ({
-              campo: d.path.join('.'),
-              mensaje: d.message,
-            })),
+          const nuevoCliente = await ClientesService.crear({
+            ...value,
+            activo: true,
+            saldoActual: 0,
+            saldoHistorico: 0,
+            esMoroso: false,
+            diasSinPagar: 0,
+            historicoIntereses: [],
+            fechaCreacion: new Date(),
+            fechaActualizacion: new Date(),
+          });
+
+          res.status(201).json({
+            exito: true,
+            mensaje: 'Cliente creado exitosamente ✅',
+            dato: nuevoCliente,
           });
           return;
+        } catch (error: any) {
+          // ✅ Manejar errores de validación de Joi
+          if (error.isJoi) {
+            res.status(400).json({
+              exito: false,
+              error: 'Validación fallida',
+              detalles: error.details.map((d: any) => ({
+                campo: d.path.join('.'),
+                mensaje: d.message,
+              })),
+            });
+            return;
+          }
+          throw error; // Re-lanzar errores no-Joi
         }
-
-        const nuevoCliente = await ClientesService.crear({
-          ...value,
-          activo: true,
-          saldoActual: 0,
-          saldoHistorico: 0,
-          esMoroso: false,
-          diasSinPagar: 0,
-          historicoIntereses: [],
-          fechaCreacion: new Date(),
-          fechaActualizacion: new Date(),
-        });
-
-        res.status(201).json({
-          exito: true,
-          mensaje: 'Cliente creado exitosamente ✅',
-          dato: nuevoCliente,
-        });
-        return;
 
       case 'PUT':
         const idActualizar = rutaCliente.replace('/', '');
@@ -144,9 +149,10 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
+        // ✅ esquemaActualizarCliente NO tiene .external(), puede usar .validate()
         const { error: errorUpdate } = esquemaActualizarCliente.validate(
           req.body,
-          { abortEarly: false, stripUnknown: true }
+          { abortEarly: false, stripUnknown: true },
         );
 
         if (errorUpdate) {
@@ -161,7 +167,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         const clienteActualizado = await Cliente.findByIdAndUpdate(
           idActualizar,
           { ...req.body, fechaActualizacion: new Date() },
-          { new: true }
+          { new: true },
         );
 
         if (!clienteActualizado) {
@@ -192,7 +198,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         const clienteDesactivado = await Cliente.findByIdAndUpdate(
           idEliminar,
           { activo: false, fechaActualizacion: new Date() },
-          { new: true }
+          { new: true },
         );
 
         if (!clienteDesactivado) {

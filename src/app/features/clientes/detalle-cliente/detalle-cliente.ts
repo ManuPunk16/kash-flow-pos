@@ -3,41 +3,37 @@ import {
   ChangeDetectionStrategy,
   input,
   output,
+  signal,
   computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Cliente } from '@core/models/cliente.model';
+import { HistorialAbonosComponent } from '../historial-abonos/historial-abonos';
+
+type PestanaDetalle = 'resumen' | 'abonos' | 'ventas';
 
 @Component({
   selector: 'app-detalle-cliente',
   templateUrl: './detalle-cliente.html',
   styleUrl: './detalle-cliente.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule],
+  imports: [CommonModule, HistorialAbonosComponent],
 })
 export class DetalleClienteComponent {
-  // ✅ Mantener como required
-  cliente = input.required<Cliente>();
-  onCerrar = output<void>();
-  onAbono = output<Cliente>();
+  readonly cliente = input.required<Cliente>();
+  readonly onCerrar = output<void>();
+  readonly onAbono = output<Cliente>();
 
-  protected readonly estadoFinanciero = computed(() => {
-    const clienteActual = this.cliente();
+  // ✅ NUEVO: Pestañas de navegación
+  protected readonly pestanaActiva = signal<PestanaDetalle>('resumen');
 
-    if (clienteActual.esMoroso) {
-      return { texto: 'MOROSO', color: 'text-red-600', emoji: '⚠️' };
-    }
-    if (clienteActual.saldoActual > 0) {
-      return { texto: 'DEUDOR', color: 'text-yellow-600', emoji: '💰' };
-    }
-    return { texto: 'AL DÍA', color: 'text-green-600', emoji: '✅' };
-  });
+  protected readonly nombreCompleto = computed(
+    () => `${this.cliente().nombre} ${this.cliente().apellido}`,
+  );
 
-  protected readonly historicoOrdenado = computed(() => {
-    return [...this.cliente().historicoIntereses].sort(
-      (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-    );
-  });
+  protected cambiarPestana(pestana: PestanaDetalle): void {
+    this.pestanaActiva.set(pestana);
+  }
 
   protected cerrar(): void {
     this.onCerrar.emit();
@@ -45,5 +41,29 @@ export class DetalleClienteComponent {
 
   protected registrarAbono(): void {
     this.onAbono.emit(this.cliente());
+  }
+
+  protected formatearMoneda(valor: number): string {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN',
+    }).format(valor);
+  }
+
+  // ✅ CORREGIDO: Aceptar string | null en lugar de Date | null
+  protected formatearFecha(fecha: string | null): string {
+    if (!fecha) return 'Nunca';
+
+    // ✅ Convertir string ISO 8601 a Date
+    const fechaDate = new Date(fecha);
+
+    // ✅ Validar que sea una fecha válida
+    if (isNaN(fechaDate.getTime())) return 'Fecha inválida';
+
+    return fechaDate.toLocaleDateString('es-MX', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
   }
 }

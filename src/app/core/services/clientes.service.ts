@@ -58,7 +58,7 @@ export class ClientesService {
         console.log('✅ Clientes cargados:', clientes.length);
         this.clientesCache.set(clientes);
       }),
-      catchError(this.manejarError)
+      catchError(this.manejarError),
     );
   }
 
@@ -75,7 +75,7 @@ export class ClientesService {
           }
           return [];
         }),
-        catchError(this.manejarError)
+        catchError(this.manejarError),
       );
   }
 
@@ -90,7 +90,7 @@ export class ClientesService {
         }
         throw new Error('Cliente no encontrado');
       }),
-      catchError(this.manejarError)
+      catchError(this.manejarError),
     );
   }
 
@@ -108,7 +108,7 @@ export class ClientesService {
       tap(() => {
         this.obtenerClientes().subscribe();
       }),
-      catchError(this.manejarError)
+      catchError(this.manejarError),
     );
   }
 
@@ -117,7 +117,7 @@ export class ClientesService {
    */
   actualizarCliente(
     id: string,
-    cambios: Partial<CrearClienteDTO>
+    cambios: Partial<CrearClienteDTO>,
   ): Observable<Cliente> {
     return this.http
       .put<RespuestaAPI<Cliente>>(`${this.apiUrl}/${id}`, cambios)
@@ -131,7 +131,7 @@ export class ClientesService {
         tap(() => {
           this.obtenerClientes().subscribe();
         }),
-        catchError(this.manejarError)
+        catchError(this.manejarError),
       );
   }
 
@@ -148,16 +148,17 @@ export class ClientesService {
       tap(() => {
         this.obtenerClientes().subscribe();
       }),
-      catchError(this.manejarError)
+      catchError(this.manejarError),
     );
   }
 
   /**
-   * Registrar abono (pago a la deuda)
+   * ✅ CORREGIDO: Registrar abono (pago a la deuda)
    */
   registrarAbono(datos: RegistrarAbonoDTO): Observable<Cliente> {
+    // ✅ CAMBIAR: De /clientes/abonos a /abonos
     return this.http
-      .post<RespuestaAPI<Cliente>>(`${this.apiUrl}/abonos`, datos)
+      .post<RespuestaAPI<Cliente>>(`${environment.apiUrl}/abonos`, datos)
       .pipe(
         map((respuesta) => {
           if (respuesta.exito && respuesta.dato) {
@@ -168,7 +169,7 @@ export class ClientesService {
         tap(() => {
           this.obtenerClientes().subscribe();
         }),
-        catchError(this.manejarError)
+        catchError(this.manejarError),
       );
   }
 
@@ -182,6 +183,18 @@ export class ClientesService {
     } else {
       if (error.error?.mensaje) {
         mensajeError = error.error.mensaje;
+      } else if (error.error?.error) {
+        // ✅ Capturar detalles de validación de Joi
+        if (typeof error.error.error === 'string') {
+          mensajeError = error.error.error;
+        }
+
+        if (error.error.detalles && Array.isArray(error.error.detalles)) {
+          const detallesFormateados = error.error.detalles
+            .map((d: any) => `${d.campo}: ${d.mensaje}`)
+            .join(', ');
+          mensajeError = `Validación fallida: ${detallesFormateados}`;
+        }
       } else if (error.error?.message) {
         mensajeError = error.error.message;
       } else if (error.message) {

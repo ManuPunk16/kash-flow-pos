@@ -1,0 +1,26 @@
+:host {
+  display: block;
+}
+
+/* Scroll suave */
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #10b981 #f3f4f6;
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+  width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #10b981;
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #059669;
+}

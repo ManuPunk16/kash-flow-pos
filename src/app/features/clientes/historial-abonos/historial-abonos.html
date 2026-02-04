@@ -1,0 +1,193 @@
+<div
+  class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+>
+  <!-- Header -->
+  <div class="bg-linear-to-r from-green-600 to-green-700 text-white p-6">
+    <h3 class="text-xl font-bold mb-2 flex items-center gap-2">
+      <span class="text-2xl">📜</span>
+      <span>Historial de Abonos</span>
+    </h3>
+    <p class="text-green-100 text-sm">{{ nombreCliente() }}</p>
+  </div>
+
+  <!-- Estadísticas Resumidas -->
+  <div class="grid grid-cols-2 gap-4 p-6 bg-gray-50 border-b border-gray-200">
+    <div class="text-center">
+      <p class="text-gray-600 text-sm font-medium">Total Abonado</p>
+      <p class="text-2xl font-bold text-green-600 mt-1">
+        {{ formatearMoneda(totalAbonado()) }}
+      </p>
+    </div>
+    <div class="text-center">
+      <p class="text-gray-600 text-sm font-medium">Cantidad de Abonos</p>
+      <p class="text-2xl font-bold text-blue-600 mt-1">
+        {{ cantidadAbonos() }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (cargando()) {
+  <div class="flex items-center justify-center py-12">
+    <div class="text-center">
+      <div
+        class="animate-spin rounded-full h-10 w-10 border-b-4 border-green-600 mb-3 mx-auto"
+      ></div>
+      <p class="text-gray-600 text-sm">Cargando abonos...</p>
+    </div>
+  </div>
+  }
+
+  <!-- Error State -->
+  @else if (error()) {
+  <div class="p-6">
+    <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+      <div class="flex items-start gap-3">
+        <span class="text-2xl">⚠️</span>
+        <div>
+          <h4 class="font-bold text-red-800 mb-1">Error al cargar</h4>
+          <p class="text-red-600 text-sm">{{ error() }}</p>
+          <button
+            (click)="cargarAbonos()"
+            class="mt-3 text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Empty State -->
+  @else if (abonos().length === 0) {
+  <div class="text-center py-12 px-6">
+    <span class="text-6xl mb-4 block">💸</span>
+    <h3 class="text-xl font-bold text-gray-800 mb-2">Sin Abonos Registrados</h3>
+    <p class="text-gray-600 text-sm">
+      Este cliente aún no ha realizado ningún abono
+    </p>
+  </div>
+  }
+
+  <!-- Lista de Abonos Agrupados por Mes -->
+  @else {
+  <div class="max-h-150 overflow-y-auto">
+    @for (grupo of abonosPorMes(); track grupo.mes) {
+    <!-- Separador de Mes -->
+    <div
+      class="sticky top-0 bg-linear-to-r from-gray-100 to-gray-200 px-6 py-3 border-b border-gray-300 z-10"
+    >
+      <div class="flex items-center justify-between">
+        <h4 class="font-bold text-gray-800 capitalize">{{ grupo.mes }}</h4>
+        <span class="text-sm font-semibold text-gray-700">
+          {{ formatearMoneda(grupo.totalMes) }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Abonos del Mes -->
+    <div class="divide-y divide-gray-200">
+      @for (abono of grupo.abonos; track abono._id) {
+      <div class="p-4 hover:bg-gray-50 transition-colors cursor-pointer group">
+        <div class="flex items-start justify-between gap-4">
+          <!-- Info Principal -->
+          <div class="flex-1">
+            <!-- Monto y Método de Pago -->
+            <div class="flex items-center gap-3 mb-2">
+              <span class="text-2xl font-bold text-green-600">
+                {{ formatearMoneda(abono.monto) }}
+              </span>
+              <span
+                [class]="'px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ' + obtenerColorMetodoPago(abono.metodoPago)"
+              >
+                <span>{{ obtenerIconoMetodoPago(abono.metodoPago) }}</span>
+                <span class="capitalize">{{ abono.metodoPago }}</span>
+              </span>
+            </div>
+
+            <!-- Fecha y Hora -->
+            <div class="flex items-center gap-2 text-sm text-gray-600 mb-2">
+              <span>📅</span>
+              <span>{{ formatearFecha(abono.fechaPago) }}</span>
+            </div>
+
+            <!-- Saldos -->
+            <div class="flex items-center gap-4 text-sm">
+              <div class="flex items-center gap-2">
+                <span class="text-gray-500">Saldo anterior:</span>
+                <span class="font-semibold text-red-600">
+                  {{ formatearMoneda(abono.saldoAnterior) }}
+                </span>
+              </div>
+              <span class="text-gray-400">→</span>
+              <div class="flex items-center gap-2">
+                <span class="text-gray-500">Nuevo saldo:</span>
+                <span class="font-semibold text-green-600">
+                  {{ formatearMoneda(abono.nuevoSaldo) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Observaciones (si existen) -->
+            @if (abono.observaciones) {
+            <div
+              class="mt-2 text-sm text-gray-600 italic bg-gray-50 p-2 rounded"
+            >
+              <span class="font-semibold">Nota:</span> {{ abono.observaciones }}
+            </div>
+            }
+
+            <!-- Referencia de Pago (si existe) -->
+            @if (abono.referenciaPago) {
+            <div class="mt-2 text-xs text-gray-500">
+              <span class="font-semibold">Ref:</span> {{ abono.referenciaPago }}
+            </div>
+            }
+
+            <!-- Registrado por -->
+            <div class="mt-2 text-xs text-gray-500">
+              <span class="font-semibold">Registrado por:</span>
+              {{ abono.nombreUsuario }}
+            </div>
+          </div>
+
+          <!-- Badge de Confirmación -->
+          <div class="shrink-0">
+            @if (abono.confirmado) {
+            <span
+              class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold"
+            >
+              <span>✓</span>
+              <span>Confirmado</span>
+            </span>
+            } @else {
+            <span
+              class="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold"
+            >
+              <span>⏳</span>
+              <span>Pendiente</span>
+            </span>
+            }
+          </div>
+        </div>
+      </div>
+      }
+    </div>
+    }
+  </div>
+  }
+
+  <!-- Footer con Botón de Recargar -->
+  @if (!cargando() && !error() && abonos().length > 0) {
+  <div class="border-t border-gray-200 p-4 bg-gray-50">
+    <button
+      (click)="cargarAbonos()"
+      class="w-full text-sm text-gray-700 hover:text-gray-900 font-semibold py-2 transition-colors flex items-center justify-center gap-2"
+    >
+      <span>🔄</span>
+      <span>Actualizar Historial</span>
+    </button>
+  </div>
+  }
+</div>

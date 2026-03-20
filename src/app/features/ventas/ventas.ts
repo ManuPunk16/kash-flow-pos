@@ -55,23 +55,9 @@ export class Ventas implements OnInit {
   });
 
   protected readonly ventasFiltradas = computed(() => {
-    const termino = this.terminoBusqueda().toLowerCase();
-    let resultado = this.ventas();
-
-    if (!Array.isArray(resultado)) {
-      console.error('❌ ventas() no es array:', resultado);
-      return [];
-    }
-
-    if (termino) {
-      resultado = resultado.filter(
-        (venta) =>
-          venta?.numeroVenta?.toLowerCase().includes(termino) ||
-          venta?.nombreCliente?.toLowerCase().includes(termino)
-      );
-    }
-
-    return resultado;
+    const resultado = this.ventas();
+    if (!Array.isArray(resultado)) return [];
+    return resultado; // ← SIN filtro local por nombre, el backend ya filtró
   });
 
   protected readonly estadisticasVista = computed(() => {
@@ -90,7 +76,7 @@ export class Ventas implements OnInit {
     const totalVendido = ventas.reduce((sum, v) => sum + (v?.total || 0), 0);
     const totalGanancia = ventas.reduce(
       (sum, v) => sum + (v?.gananciaTotal || 0),
-      0
+      0,
     );
 
     return {
@@ -130,6 +116,7 @@ export class Ventas implements OnInit {
         this.filtroMetodoPago() !== 'todos'
           ? this.filtroMetodoPago()
           : undefined,
+      busqueda: this.terminoBusqueda() || undefined, // ← AGREGAR ESTO
     };
 
     this.ventasService.obtenerVentasConFiltros(filtros).subscribe({
@@ -169,6 +156,12 @@ export class Ventas implements OnInit {
   protected actualizarBusqueda(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.terminoBusqueda.set(input.value);
+    // Solo actualiza el signal, NO llama al API
+  }
+
+  protected buscar(): void {
+    this.paginaActual.set(1);
+    this.cargarVentas();
   }
 
   protected cambiarFiltroMetodoPago(metodo: MetodoPago | 'todos'): void {

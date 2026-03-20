@@ -28,7 +28,7 @@ export class VentasService {
       tap((respuesta) => {
         console.log(
           '📥 [VentasService] Respuesta venta registrada:',
-          respuesta
+          respuesta,
         );
       }),
       map((respuesta) => {
@@ -50,7 +50,7 @@ export class VentasService {
           'Error al registrar la venta';
 
         throw new Error(mensajeError);
-      })
+      }),
     );
   }
 
@@ -65,6 +65,7 @@ export class VentasService {
     usuarioId?: string;
     metodoPago?: MetodoPago | 'todos';
     clienteId?: string;
+    busqueda?: string; // ← AGREGAR ESTO
   }): Observable<RespuestaListaVentas> {
     // Construir parámetros HTTP
     let params = new HttpParams();
@@ -89,6 +90,9 @@ export class VentasService {
     }
     if (filtros.clienteId) {
       params = params.set('clienteId', filtros.clienteId);
+    }
+    if (filtros.busqueda) {
+      params = params.set('busqueda', filtros.busqueda); // ← AGREGAR ESTO
     }
 
     console.log('📤 [VentasService] Solicitando ventas:', {
@@ -184,7 +188,7 @@ export class VentasService {
             limite: 20,
             totalPaginas: 0,
           });
-        })
+        }),
       );
   }
 
@@ -193,7 +197,7 @@ export class VentasService {
    */
   obtenerTodasLasVentas(): Observable<Venta[]> {
     return this.obtenerVentasConFiltros({}).pipe(
-      map((respuesta) => respuesta.ventas)
+      map((respuesta) => respuesta.ventas),
     );
   }
 
@@ -225,7 +229,7 @@ export class VentasService {
       catchError((error) => {
         console.error('❌ Error al obtener venta:', error);
         return of(null);
-      })
+      }),
     );
   }
 
@@ -245,7 +249,7 @@ export class VentasService {
         catchError((error) => {
           console.error('❌ Error al anular venta:', error);
           throw error;
-        })
+        }),
       );
   }
 }

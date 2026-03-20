@@ -67,4 +67,15 @@ export class AlmacenamientoLocalService {
   existe(clave: string): boolean {
     return localStorage.getItem(clave) !== null;
   }
+
+  /**
+   * Ordenar un array de objetos por stock
+   */
+  ordenarPorStock(objetos: Array<{ stock: number }>): Array<{ stock: number }> {
+    return objetos.sort((a, b) => {
+      if (a.stock > 0 && b.stock === 0) return -1;
+      if (a.stock === 0 && b.stock > 0) return 1;
+      return b.stock - a.stock; // mayor stock primero
+    });
+  }
 }

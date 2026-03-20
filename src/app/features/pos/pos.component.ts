@@ -63,7 +63,7 @@ export class PosComponent implements OnInit {
   protected readonly mostrarCarritoMovil = signal(false);
 
   protected readonly carrito = computed(() =>
-    this.carritoService.obtenerItems()
+    this.carritoService.obtenerItems(),
   );
   protected readonly clienteSeleccionado = signal<Cliente | null>(null);
   protected readonly loading = signal(false);
@@ -74,7 +74,7 @@ export class PosComponent implements OnInit {
   protected readonly mostrarListaClientes = signal(false);
 
   protected readonly emailUsuario = computed(
-    () => this.authService.obtenerUsuarioActual()?.email || 'Usuario'
+    () => this.authService.obtenerUsuarioActual()?.email || 'Usuario',
   );
 
   protected readonly CATEGORIAS = [
@@ -101,7 +101,11 @@ export class PosComponent implements OnInit {
       });
     }
 
-    return resultado;
+    return resultado.sort((a, b) => {
+      if (a.stock > 0 && b.stock === 0) return -1;
+      if (a.stock === 0 && b.stock > 0) return 1;
+      return b.stock - a.stock; // mayor stock primero
+    });
   });
 
   protected readonly productos = computed(() => {
@@ -113,22 +117,22 @@ export class PosComponent implements OnInit {
 
   protected readonly total = computed(() => this.carritoService.subtotal());
   protected readonly cantidadItems = computed(() =>
-    this.carritoService.cantidadItems()
+    this.carritoService.cantidadItems(),
   );
   protected readonly gananciaTotal = computed(() =>
-    this.carritoService.gananciaTotal()
+    this.carritoService.gananciaTotal(),
   );
   protected readonly totalConDescuento = computed(() =>
-    this.carritoService.totalConDescuento()
+    this.carritoService.totalConDescuento(),
   );
   protected readonly totalFinal = computed(() =>
-    this.carritoService.totalFinal()
+    this.carritoService.totalFinal(),
   );
   protected readonly cambioEfectivo = computed(() =>
-    this.carritoService.cambioEfectivo()
+    this.carritoService.cambioEfectivo(),
   );
   protected readonly montoComisionTerminal = computed(() =>
-    this.carritoService.montoComision()
+    this.carritoService.montoComision(),
   );
 
   protected readonly gananciaPorItem = computed(() =>
@@ -140,7 +144,7 @@ export class PosComponent implements OnInit {
       margenPorcentaje:
         ((item.precioUnitario - item.costoUnitario) / item.precioUnitario) *
         100,
-    }))
+    })),
   );
 
   protected readonly clientesFiltrados = computed(() => {
@@ -221,7 +225,7 @@ export class PosComponent implements OnInit {
   protected readonly productosPorPagina = signal(20);
 
   protected readonly totalProductos = computed(
-    () => this.productosFiltrados().length
+    () => this.productosFiltrados().length,
   );
 
   protected readonly totalPaginas = computed(() => {
@@ -310,7 +314,7 @@ export class PosComponent implements OnInit {
     }
 
     const itemExistente = this.carrito().find(
-      (item) => item.productoId === producto._id
+      (item) => item.productoId === producto._id,
     );
 
     if (itemExistente) {
@@ -319,7 +323,7 @@ export class PosComponent implements OnInit {
 
       if (stockRestante === 0) {
         this.mostrarAlerta(
-          `⚠️ Ya tienes todo el stock disponible de "${producto.nombre}" en el carrito`
+          `⚠️ Ya tienes todo el stock disponible de "${producto.nombre}" en el carrito`,
         );
         return;
       }
@@ -338,7 +342,7 @@ export class PosComponent implements OnInit {
 
     if (item.cantidad >= item.stockDisponible) {
       this.mostrarAlerta(
-        `⚠️ No puedes agregar más. Stock máximo: ${item.stockDisponible}`
+        `⚠️ No puedes agregar más. Stock máximo: ${item.stockDisponible}`,
       );
       return;
     }
@@ -374,7 +378,7 @@ export class PosComponent implements OnInit {
 
   protected puedeAgregarMas(producto: Producto): boolean {
     const itemEnCarrito = this.carrito().find(
-      (item) => item.productoId === producto._id
+      (item) => item.productoId === producto._id,
     );
 
     if (!itemEnCarrito) {
@@ -417,7 +421,7 @@ export class PosComponent implements OnInit {
 
   protected obtenerNombreCategoria(categoria: CategoriaProducto): string {
     const categoriaInfo = CATEGORIAS_PRODUCTO_CATALOGO.find(
-      (cat) => cat.valor === categoria
+      (cat) => cat.valor === categoria,
     );
     return categoriaInfo?.etiqueta || 'Sin categoría';
   }
@@ -487,7 +491,7 @@ export class PosComponent implements OnInit {
 
     if (metodo === MetodoPago.FIADO && !this.clienteSeleccionado()) {
       this.mostrarAlerta(
-        '⚠️ Debes seleccionar un cliente para venta a crédito'
+        '⚠️ Debes seleccionar un cliente para venta a crédito',
       );
     }
 
@@ -663,7 +667,7 @@ export class PosComponent implements OnInit {
 
         setTimeout(() => {
           const cliente = this.todosLosClientes().find(
-            (c) => c._id === clienteCreado._id
+            (c) => c._id === clienteCreado._id,
           );
           if (cliente) {
             this.seleccionarCliente(cliente);

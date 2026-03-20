@@ -9,6 +9,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { Cliente } from '@core/models/cliente.model';
 import { HistorialAbonosComponent } from '../historial-abonos/historial-abonos';
+import { HistorialVentasClienteComponent } from '../historial-ventas-cliente/historial-ventas-cliente';
 
 type PestanaDetalle = 'resumen' | 'abonos' | 'ventas';
 
@@ -17,7 +18,11 @@ type PestanaDetalle = 'resumen' | 'abonos' | 'ventas';
   templateUrl: './detalle-cliente.html',
   styleUrl: './detalle-cliente.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, HistorialAbonosComponent],
+  imports: [
+    CommonModule,
+    HistorialAbonosComponent,
+    HistorialVentasClienteComponent,
+  ],
 })
 export class DetalleClienteComponent {
   readonly cliente = input.required<Cliente>();

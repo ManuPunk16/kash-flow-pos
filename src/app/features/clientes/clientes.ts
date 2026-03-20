@@ -64,41 +64,44 @@ export class Clientes implements OnInit {
     }
 
     // Filtrar por búsqueda
-    if (!termino) return lista;
+    if (!termino)
+      return lista.slice().sort((a, b) => b.saldoActual - a.saldoActual);
 
-    return lista.filter(
-      (c) =>
-        c.nombre.toLowerCase().includes(termino) ||
-        c.apellido.toLowerCase().includes(termino) ||
-        c.identificacion?.toLowerCase().includes(termino) ||
-        c.telefono?.toLowerCase().includes(termino) ||
-        c.email?.toLowerCase().includes(termino)
-    );
+    return lista
+      .filter(
+        (c) =>
+          c.nombre.toLowerCase().includes(termino) ||
+          c.apellido.toLowerCase().includes(termino) ||
+          c.identificacion?.toLowerCase().includes(termino) ||
+          c.telefono?.toLowerCase().includes(termino) ||
+          c.email?.toLowerCase().includes(termino),
+      )
+      .sort((a, b) => b.saldoActual - a.saldoActual);
   });
 
   protected readonly clientesDeudores = computed(() =>
-    this.clientes().filter((c) => c.saldoActual > 0)
+    this.clientes().filter((c) => c.saldoActual > 0),
   );
 
   protected readonly clientesMorosos = computed(() =>
-    this.clientes().filter((c) => c.esMoroso)
+    this.clientes().filter((c) => c.esMoroso),
   );
 
   protected readonly totalAdeudado = computed(() =>
-    this.clientesDeudores().reduce((sum, c) => sum + c.saldoActual, 0)
+    this.clientesDeudores().reduce((sum, c) => sum + c.saldoActual, 0),
   );
 
   protected readonly cantidadClientes = computed(() => this.clientes().length);
 
   protected readonly cantidadActivos = computed(
-    () => this.clientes().filter((c) => c.activo).length
+    () => this.clientes().filter((c) => c.activo).length,
   );
 
   protected readonly proximoCorte = computed(() => {
     const hoy = new Date();
     const primerDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1);
     const diasFaltantes = Math.ceil(
-      (primerDia.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24)
+      (primerDia.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24),
     );
     return {
       fecha: primerDia,

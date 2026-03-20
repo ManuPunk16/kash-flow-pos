@@ -158,13 +158,10 @@
 
       <!-- ✅ PESTAÑA: Historial de Ventas -->
       @if (pestanaActiva() === 'ventas') {
-      <div class="text-center py-12">
-        <span class="text-6xl mb-4 block">🛒</span>
-        <h3 class="text-xl font-bold text-gray-800 mb-2">Próximamente</h3>
-        <p class="text-gray-600">
-          El historial de ventas estará disponible en la próxima versión
-        </p>
-      </div>
+      <app-historial-ventas-cliente
+        [clienteId]="cliente()._id"
+        [nombreCliente]="nombreCompleto()"
+      />
       }
     </div>
 

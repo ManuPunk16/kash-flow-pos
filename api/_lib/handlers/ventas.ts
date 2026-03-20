@@ -15,11 +15,11 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
   res.setHeader(
     'Access-Control-Allow-Methods',
-    'GET,OPTIONS,PATCH,DELETE,POST,PUT'
+    'GET,OPTIONS,PATCH,DELETE,POST,PUT',
   );
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization',
   );
 
   if (req.method === 'OPTIONS') {
@@ -48,7 +48,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         if (rutaVenta === '/' || rutaVenta === '') {
           const { searchParams } = new URL(
             req.url || '',
-            `http://${req.headers.host}`
+            `http://${req.headers.host}`,
           );
 
           // ✅ Parámetros de paginación
@@ -62,6 +62,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           const metodoPago = searchParams.get('metodoPago');
           const usuarioId = searchParams.get('usuarioId');
           const clienteId = searchParams.get('clienteId');
+          const busqueda = searchParams.get('busqueda');
 
           // ✅ Construir query
           const query: any = {};
@@ -82,6 +83,11 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
 
           if (clienteId) {
             query.clienteId = clienteId;
+          }
+
+          if (busqueda) {
+            const regex = new RegExp(busqueda, 'i');
+            query.$or = [{ nombreCliente: regex }, { numeroVenta: regex }];
           }
 
           // ✅ Consultar ventas con paginación
@@ -205,13 +211,13 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         // Calcular totales
         const subtotal = items.reduce(
           (sum: number, item: any) => sum + item.subtotal,
-          0
+          0,
         );
         const descuentoAplicado = descuento || 0;
         const total = subtotal - descuentoAplicado;
         const gananciaTotal = items.reduce(
           (sum: number, item: any) => sum + item.ganancia,
-          0
+          0,
         );
 
         // Generar número de venta único

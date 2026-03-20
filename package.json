@@ -18,12 +18,10 @@
     "@angular/common": "^21.2.0",
     "@angular/compiler": "^21.2.0",
     "@angular/core": "^21.2.0",
-    "@angular/fire": "^21.0.0-rc.0",
     "@angular/forms": "^21.2.0",
     "@angular/platform-browser": "^21.2.0",
     "@angular/router": "^21.2.0",
     "@tailwindcss/postcss": "^4.1.12",
-    "firebase": "^12.7.0",
     "html2canvas": "^1.4.1",
     "jsbarcode": "^3.12.1",
     "jspdf": "^4.0.0",
@@ -35,7 +33,7 @@
     "zone.js": "^0.16.0"
   },
   "devDependencies": {
-    "@angular/build": "^21.2.0",
+    "@angular/build": "^20.3.21",
     "@angular/cli": "^21.2.0",
     "@angular/compiler-cli": "^21.2.0",
     "@types/jsbarcode": "^3.11.4",

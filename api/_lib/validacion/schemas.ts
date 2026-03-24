@@ -242,3 +242,31 @@ export const esquemaActualizarEgreso = Joi.object({
   aprobado: Joi.boolean().optional(),
   fechaEgreso: Joi.date().optional(),
 });
+
+// ========================================
+// ✅ AJUSTES DE VENTA
+// ========================================
+
+export const esquemaAjustarVenta = Joi.object({
+  razon: Joi.string().required().min(10).max(500).trim().messages({
+    'string.base': 'La razón debe ser texto',
+    'string.empty': 'La razón del ajuste es obligatoria',
+    'string.min': 'La razón debe tener al menos 10 caracteres',
+    'string.max': 'La razón no puede superar los 500 caracteres',
+    'any.required': 'La razón del ajuste es obligatoria',
+  }),
+  accion: Joi.string().valid('correccion', 'anulacion').required().messages({
+    'any.only': 'La acción debe ser "correccion" o "anulacion"',
+    'any.required': 'La acción es obligatoria',
+  }),
+  // Campos opcionales solo para accion === 'correccion'
+  metodoPago: Joi.string()
+    .valid(...METODOS_PAGO_VALORES)
+    .optional()
+    .messages({
+      'any.only': `Método de pago inválido. Válidos: ${METODOS_PAGO_VALORES.join(', ')}`,
+    }),
+  descuento: Joi.number().min(0).optional(),
+  observaciones: Joi.string().optional().allow('').max(500).trim(),
+  referenciaPago: Joi.string().optional().allow('').trim(),
+});

@@ -9,6 +9,7 @@ import {
   esMetodoPagoValido,
   EstadoVenta,
 } from '../enums/index.js';
+import { esquemaAjustarVenta } from '../validacion/schemas.js';
 
 export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -96,6 +97,7 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
               .sort({ fechaVenta: -1 })
               .skip(skip)
               .limit(limite)
+              .select('-ajustes')
               .lean(),
             Venta.countDocuments(query),
           ]);
@@ -342,13 +344,247 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
         });
         return;
 
-      default:
-        res.status(405).json({
-          exito: false,
-          error: 'Método no permitido',
-          metodo: req.method,
+      case 'PATCH': {
+        // PATCH /api/ventas/:id/ajustar
+        const coincidenciaAjuste = rutaVenta.match(
+          /^\/([0-9a-fA-F]{24})\/ajustar$/,
+        );
+
+        if (!coincidenciaAjuste) {
+          res
+            .status(400)
+            .json({ exito: false, error: 'Ruta de ajuste inválida' });
+          return;
+        }
+
+        const ventaIdAjuste = coincidenciaAjuste[1];
+
+        // Validar body
+        const { error: errorValidacion, value: datosValidados } =
+          esquemaAjustarVenta.validate(req.body, { abortEarly: false });
+
+        if (errorValidacion) {
+          res.status(400).json({
+            exito: false,
+            error: 'Datos de ajuste inválidos',
+            detalles: errorValidacion.details.map((d) => d.message),
+          });
+          return;
+        }
+
+        const {
+          razon,
+          accion,
+          metodoPago: nuevoMetodoPago,
+          descuento: nuevoDescuento,
+          observaciones: nuevasObservaciones,
+          referenciaPago: nuevaReferencia,
+        } = datosValidados;
+
+        // Buscar la venta
+        const ventaAjustar = await Venta.findById(ventaIdAjuste);
+        if (!ventaAjustar) {
+          res.status(404).json({ exito: false, error: 'Venta no encontrada' });
+          return;
+        }
+
+        // No se pueden ajustar ventas ya anuladas
+        if (ventaAjustar.estado === EstadoVenta.ANULADA) {
+          res.status(400).json({
+            exito: false,
+            error: 'No se puede ajustar una venta que ya fue anulada',
+          });
+          return;
+        }
+
+        // Obtener datos del usuario que realiza el ajuste
+        const usuarioAjuste = await Usuario.findOne({
+          firebaseUid: req.usuario!.uid,
+        }).lean();
+        if (!usuarioAjuste) {
+          res
+            .status(404)
+            .json({ exito: false, error: 'Usuario no encontrado' });
+          return;
+        }
+
+        const registroAjuste: IAjusteVenta = {
+          fecha: new Date(),
+          usuarioUid: req.usuario!.uid,
+          nombreUsuario: `${usuarioAjuste.nombre} ${usuarioAjuste.apellido}`,
+          emailUsuario: req.usuario!.email,
+          razon,
+          tipoAjuste: accion,
+          camposModificados: [],
+        };
+
+        // ───────────────────────────────────────────
+        // CASO: ANULACIÓN
+        // ───────────────────────────────────────────
+        if (accion === 'anulacion') {
+          // Revertir stock
+          for (const item of ventaAjustar.items) {
+            await Producto.findByIdAndUpdate(item.productoId, {
+              $inc: { stock: item.cantidad },
+            });
+          }
+
+          // Si era fiado, revertir saldo del cliente
+          if (
+            ventaAjustar.metodoPago === MetodoPago.FIADO &&
+            ventaAjustar.clienteId
+          ) {
+            await Cliente.findByIdAndUpdate(ventaAjustar.clienteId, {
+              $inc: {
+                saldoActual: -ventaAjustar.total,
+                saldoHistorico: -ventaAjustar.total,
+              },
+            });
+          }
+
+          registroAjuste.camposModificados.push({
+            campo: 'estado',
+            valorAnterior: ventaAjustar.estado,
+            valorNuevo: EstadoVenta.ANULADA,
+          });
+
+          ventaAjustar.estado = EstadoVenta.ANULADA;
+          ventaAjustar.ajustes.push(registroAjuste);
+          await ventaAjustar.save();
+
+          res.status(200).json({
+            exito: true,
+            mensaje: 'Venta anulada exitosamente ✅',
+            dato: ventaAjustar,
+          });
+          return;
+        }
+
+        // ───────────────────────────────────────────
+        // CASO: CORRECCIÓN
+        // ───────────────────────────────────────────
+        const tieneCambios =
+          nuevoMetodoPago !== undefined ||
+          nuevoDescuento !== undefined ||
+          nuevasObservaciones !== undefined ||
+          nuevaReferencia !== undefined;
+
+        if (!tieneCambios) {
+          res.status(400).json({
+            exito: false,
+            error: 'Debe especificar al menos un campo a corregir',
+          });
+          return;
+        }
+
+        // Calcular nuevo total y método de pago finales (para lógica de saldo)
+        const metodoPagoAnterior = ventaAjustar.metodoPago;
+        const metodoPagoFinal = nuevoMetodoPago ?? metodoPagoAnterior;
+        const totalAnterior = ventaAjustar.total;
+        const nuevoDescuentoVal = nuevoDescuento ?? ventaAjustar.descuento;
+        const totalFinal = ventaAjustar.subtotal - nuevoDescuentoVal;
+
+        if (totalFinal < 0) {
+          res.status(400).json({
+            exito: false,
+            error: 'El descuento no puede ser mayor al subtotal de la venta',
+          });
+          return;
+        }
+
+        // Validar que si cambia a fiado, tenga cliente
+        if (metodoPagoFinal === MetodoPago.FIADO && !ventaAjustar.clienteId) {
+          res.status(400).json({
+            exito: false,
+            error: 'No se puede cambiar a fiado una venta sin cliente asignado',
+          });
+          return;
+        }
+
+        // ✅ Calcular impacto en saldo del cliente
+        const eraFiado = metodoPagoAnterior === MetodoPago.FIADO;
+        const seraFiado = metodoPagoFinal === MetodoPago.FIADO;
+        let deltaSaldo = 0;
+
+        if (eraFiado && seraFiado) {
+          deltaSaldo = totalFinal - totalAnterior; // Puede ser negativo (favor al cliente)
+        } else if (eraFiado && !seraFiado) {
+          deltaSaldo = -totalAnterior; // Revertir deuda original
+        } else if (!eraFiado && seraFiado) {
+          deltaSaldo = totalFinal; // Crear nueva deuda
+        }
+
+        if (deltaSaldo !== 0 && ventaAjustar.clienteId) {
+          await Cliente.findByIdAndUpdate(ventaAjustar.clienteId, {
+            $inc: { saldoActual: deltaSaldo },
+          });
+        }
+
+        // ✅ Registrar campos modificados y aplicar cambios
+        if (
+          nuevoMetodoPago !== undefined &&
+          nuevoMetodoPago !== metodoPagoAnterior
+        ) {
+          registroAjuste.camposModificados.push({
+            campo: 'metodoPago',
+            valorAnterior: metodoPagoAnterior,
+            valorNuevo: nuevoMetodoPago,
+          });
+          ventaAjustar.metodoPago = nuevoMetodoPago;
+        }
+
+        if (
+          nuevoDescuento !== undefined &&
+          nuevoDescuento !== ventaAjustar.descuento
+        ) {
+          registroAjuste.camposModificados.push({
+            campo: 'descuento',
+            valorAnterior: ventaAjustar.descuento,
+            valorNuevo: nuevoDescuento,
+          });
+          registroAjuste.camposModificados.push({
+            campo: 'total',
+            valorAnterior: totalAnterior,
+            valorNuevo: totalFinal,
+          });
+          ventaAjustar.descuento = nuevoDescuento;
+          ventaAjustar.total = totalFinal;
+        }
+
+        if (
+          nuevasObservaciones !== undefined &&
+          nuevasObservaciones !== ventaAjustar.observaciones
+        ) {
+          registroAjuste.camposModificados.push({
+            campo: 'observaciones',
+            valorAnterior: ventaAjustar.observaciones,
+            valorNuevo: nuevasObservaciones,
+          });
+          ventaAjustar.observaciones = nuevasObservaciones;
+        }
+
+        if (
+          nuevaReferencia !== undefined &&
+          nuevaReferencia !== ventaAjustar.referenciaPago
+        ) {
+          registroAjuste.camposModificados.push({
+            campo: 'referenciaPago',
+            valorAnterior: ventaAjustar.referenciaPago ?? '',
+            valorNuevo: nuevaReferencia,
+          });
+          ventaAjustar.referenciaPago = nuevaReferencia;
+        }
+
+        ventaAjustar.ajustes.push(registroAjuste);
+        await ventaAjustar.save();
+
+        res.status(200).json({
+          exito: true,
+          mensaje: 'Venta ajustada exitosamente ✅',
+          dato: ventaAjustar,
         });
         return;
+      }
     }
   } catch (error) {
     console.error('❌ Error en ventas API:', error);

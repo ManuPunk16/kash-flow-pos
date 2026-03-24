@@ -36,7 +36,50 @@ export interface IVenta extends Document {
   estado: EstadoVenta; // ✅ Usar enum
   fechaVenta: Date;
   fechaCreacion: Date;
+  ajustes: IAjusteVenta[];
 }
+
+export interface ICampoModificado {
+  campo: string;
+  valorAnterior: unknown;
+  valorNuevo: unknown;
+}
+
+export interface IAjusteVenta {
+  fecha: Date;
+  usuarioUid: string;
+  nombreUsuario: string;
+  emailUsuario: string;
+  razon: string;
+  tipoAjuste: 'correccion' | 'anulacion';
+  camposModificados: ICampoModificado[];
+}
+
+const campoModificadoSchema = new Schema<ICampoModificado>(
+  {
+    campo: { type: String, required: true },
+    valorAnterior: { type: Schema.Types.Mixed },
+    valorNuevo: { type: Schema.Types.Mixed },
+  },
+  { _id: false },
+);
+
+const ajusteVentaSchema = new Schema<IAjusteVenta>(
+  {
+    fecha: { type: Date, default: () => new Date(), required: true },
+    usuarioUid: { type: String, required: true },
+    nombreUsuario: { type: String, required: true },
+    emailUsuario: { type: String, required: true },
+    razon: { type: String, required: true, minlength: 10, maxlength: 500 },
+    tipoAjuste: {
+      type: String,
+      enum: ['correccion', 'anulacion'],
+      required: true,
+    },
+    camposModificados: { type: [campoModificadoSchema], default: [] },
+  },
+  { _id: true },
+);
 
 const itemVentaSchema = new Schema<IItemVenta>(
   {
@@ -53,7 +96,7 @@ const itemVentaSchema = new Schema<IItemVenta>(
     ganancia: { type: Number, required: true, min: 0 },
     esConsignacion: { type: Boolean, default: false },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const ventaSchema = new Schema<IVenta>(
@@ -69,6 +112,7 @@ const ventaSchema = new Schema<IVenta>(
     usuarioId: { type: Schema.Types.ObjectId, ref: 'Usuario', required: true },
     nombreUsuario: { type: String, required: true },
     items: { type: [itemVentaSchema], required: true },
+    ajustes: { type: [ajusteVentaSchema], default: [] },
     subtotal: { type: Number, required: true, min: 0 },
     descuento: { type: Number, default: 0, min: 0 },
     total: { type: Number, required: true, min: 0 },
@@ -93,7 +137,7 @@ const ventaSchema = new Schema<IVenta>(
   {
     timestamps: true,
     collection: 'ventas',
-  }
+  },
 );
 
 ventaSchema.index({ clienteId: 1 });

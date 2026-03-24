@@ -436,8 +436,9 @@
   @if (ventaSeleccionada()) {
   <app-detalle-venta
     [venta]="ventaSeleccionada()!"
-    (onCerrar)="cerrarDetalleVenta()"
-    (onVerTicket)="verTicket($event); cerrarDetalleVenta()"
+    (onCerrar)="ventaSeleccionada.set(null)"
+    (onVerTicket)="verTicket($event)"
+    (onAjustar)="abrirModalAjuste($event)"
   />
   <!-- ✅ NUEVO: Conectar evento onVerTicket -->
   }
@@ -447,5 +448,14 @@
   <!-- ============================= -->
   @if (ventaParaTicket()) {
   <app-modal-ticket [venta]="ventaParaTicket()!" (onCerrar)="cerrarTicket()" />
+  }
+
+  <!-- Modal de Ajuste de Venta -->
+  @if (ventaParaAjuste()) {
+  <app-modal-ajuste-venta
+    [venta]="ventaParaAjuste()!"
+    (onCerrar)="cerrarModalAjuste()"
+    (onAjusteCompletado)="onAjusteCompletado($event)"
+  />
   }
 </div>

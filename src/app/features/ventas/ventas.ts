@@ -13,12 +13,19 @@ import { VentasService } from '@core/services/ventas.service';
 import { MetodoPago } from '@core/enums';
 import { DetalleVenta } from './detalle-venta/detalle-venta';
 import { ModalTicket } from '@shared/components/modal-ticket/modal-ticket'; // ✅ NUEVO
+import { ModalAjusteVenta } from './modal-ajuste-venta/modal-ajuste-venta'; // ✅ NUEVO
 
 type VistaVentas = 'tabla' | 'cards';
 
 @Component({
   selector: 'app-ventas',
-  imports: [CommonModule, FormsModule, DetalleVenta, ModalTicket], // ✅ NUEVO: Agregar ModalTicket
+  imports: [
+    CommonModule,
+    FormsModule,
+    DetalleVenta,
+    ModalTicket,
+    ModalAjusteVenta,
+  ], // ✅ NUEVO: Agregar ModalTicket
   templateUrl: './ventas.html',
   styleUrl: './ventas.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -30,8 +37,10 @@ export class Ventas implements OnInit {
   protected readonly ventas = signal<Venta[]>([]);
   protected readonly ventaSeleccionada = signal<Venta | null>(null);
   protected readonly ventaParaTicket = signal<Venta | null>(null); // ✅ NUEVO: Venta para mostrar ticket
+  protected readonly ventaParaAjuste = signal<Venta | null>(null); // ✅ NUEVO: Venta para ajuste
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly loadingDetalle = signal(false);
 
   // 🎨 Vista
   protected readonly vista = signal<VistaVentas>('cards');
@@ -185,7 +194,21 @@ export class Ventas implements OnInit {
   }
 
   protected verDetalleVenta(venta: Venta): void {
+    // Mostrar el modal inmediatamente con los datos de la lista (sin ajustes)
+    // mientras se carga la versión completa en segundo plano
     this.ventaSeleccionada.set(venta);
+    this.loadingDetalle.set(true);
+
+    this.ventasService.obtenerVenta(venta._id).subscribe({
+      next: (ventaCompleta) => {
+        this.ventaSeleccionada.set(ventaCompleta);
+        this.loadingDetalle.set(false);
+      },
+      error: () => {
+        // Si falla el fetch individual, el modal igual muestra los datos básicos
+        this.loadingDetalle.set(false);
+      },
+    });
   }
 
   protected cerrarDetalleVenta(): void {
@@ -200,6 +223,32 @@ export class Ventas implements OnInit {
   // ✅ NUEVO: Cerrar modal de ticket
   protected cerrarTicket(): void {
     this.ventaParaTicket.set(null);
+  }
+
+  // ✅ NUEVO: Abrir modal de ajuste
+  protected verAjuste(venta: Venta): void {
+    this.ventaParaAjuste.set(venta);
+  }
+
+  // ✅ NUEVO: Cerrar modal de ajuste
+  protected cerrarAjuste(): void {
+    this.ventaParaAjuste.set(null);
+  }
+
+  protected abrirModalAjuste(venta: Venta): void {
+    // Cerrar el detalle si estaba abierto para evitar superposición de modales
+    this.ventaSeleccionada.set(null);
+    this.ventaParaAjuste.set(venta);
+  }
+
+  protected cerrarModalAjuste(): void {
+    this.ventaParaAjuste.set(null);
+  }
+
+  protected onAjusteCompletado(ventaActualizada: Venta): void {
+    this.cerrarModalAjuste();
+    // Refrescar la lista para reflejar los cambios
+    this.cargarVentas();
   }
 
   protected paginaAnterior(): void {

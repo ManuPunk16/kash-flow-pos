@@ -214,26 +214,133 @@
         <p class="text-sm text-yellow-800">{{ venta().observaciones }}</p>
       </div>
       }
-    </div>
 
-    <!-- Footer -->
-    <div
-      class="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50"
-    >
+      <!-- Botón Ajustar (solo ventas no anuladas) -->
+      @if (venta().estado !== 'anulada') {
       <button
-        (click)="cerrar()"
-        class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors"
+        (click)="ajustar()"
+        class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg transition-colors text-sm flex items-center gap-2"
       >
-        Cerrar
+        🛠️ Ajustar
       </button>
+      }
 
-      <button
-        (click)="verTicket()"
-        class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+      <!-- Historial de Ajustes -->
+      @if (venta().ajustes && venta().ajustes!.length > 0) {
+      <div class="border-t border-amber-200 pt-4">
+        <button
+          (click)="toggleHistorial()"
+          class="flex items-center justify-between w-full text-left"
+        >
+          <h3
+            class="text-base font-bold text-amber-700 flex items-center gap-2"
+          >
+            <span>📋</span>
+            Historial de Ajustes
+            <span
+              class="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded-full"
+            >
+              {{ venta().ajustes!.length }}
+            </span>
+          </h3>
+          <svg
+            class="w-5 h-5 text-amber-600 transition-transform"
+            [class.rotate-180]="mostrarHistorial()"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+
+        @if (mostrarHistorial()) {
+        <div class="mt-3 space-y-3">
+          @for (ajuste of venta().ajustes!; track ajuste._id) {
+          <div
+            class="rounded-lg border p-4"
+            [class.border-amber-200]="ajuste.tipoAjuste === 'correccion'"
+            [class.bg-amber-50]="ajuste.tipoAjuste === 'correccion'"
+            [class.border-red-200]="ajuste.tipoAjuste === 'anulacion'"
+            [class.bg-red-50]="ajuste.tipoAjuste === 'anulacion'"
+          >
+            <div class="flex items-start justify-between mb-2">
+              <div>
+                <span
+                  class="text-xs font-bold px-2 py-0.5 rounded-full"
+                  [class.bg-amber-200]="ajuste.tipoAjuste === 'correccion'"
+                  [class.text-amber-800]="ajuste.tipoAjuste === 'correccion'"
+                  [class.bg-red-200]="ajuste.tipoAjuste === 'anulacion'"
+                  [class.text-red-800]="ajuste.tipoAjuste === 'anulacion'"
+                >
+                  {{ ajuste.tipoAjuste === 'correccion' ? '✏️ Corrección' : '❌
+                  Anulación' }}
+                </span>
+              </div>
+              <span class="text-xs text-gray-500">
+                {{ ajuste.fecha | date: 'dd/MM/yyyy HH:mm' }}
+              </span>
+            </div>
+
+            <p class="text-sm font-semibold text-gray-800 mb-1">
+              👤 {{ ajuste.nombreUsuario }}
+              <span class="font-normal text-gray-500"
+                >({{ ajuste.emailUsuario }})</span
+              >
+            </p>
+
+            <p class="text-sm text-gray-700 mb-2">
+              <span class="font-medium">Razón:</span> {{ ajuste.razon }}
+            </p>
+
+            @if (ajuste.camposModificados.length > 0) {
+            <div class="space-y-1">
+              @for (campo of ajuste.camposModificados; track campo.campo) {
+              <div class="text-xs flex items-center gap-2 text-gray-600">
+                <span class="font-medium text-gray-700"
+                  >{{ obtenerEtiquetaCampo(campo.campo) }}:</span
+                >
+                <span class="line-through text-red-500"
+                  >{{ campo.valorAnterior }}</span
+                >
+                <span class="text-gray-400">→</span>
+                <span class="font-semibold text-green-700"
+                  >{{ campo.valorNuevo }}</span
+                >
+              </div>
+              }
+            </div>
+            }
+          </div>
+          }
+        </div>
+        }
+      </div>
+      }
+      <!-- Footer -->
+      <div
+        class="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50"
       >
-        <span>🧾</span>
-        <span>Ver/Imprimir Ticket</span>
-      </button>
+        <button
+          (click)="cerrar()"
+          class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors"
+        >
+          Cerrar
+        </button>
+
+        <button
+          (click)="verTicket()"
+          class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+        >
+          <span>🧾</span>
+          <span>Ver/Imprimir Ticket</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>

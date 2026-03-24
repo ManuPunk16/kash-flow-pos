@@ -34,6 +34,7 @@ export interface Venta {
   observaciones?: string;
   estado: EstadoVenta;
   fechaCreacion?: Date | string;
+  ajustes?: AjusteVenta[];
 }
 
 // ✅ DTO para registrar venta (lo que envías al backend)
@@ -62,4 +63,33 @@ export interface RespuestaAPI<T = any> {
   datos?: T;
   dato?: T;
   error?: string;
+}
+
+// ✅ Interface de un campo modificado en un ajuste
+export interface CampoModificado {
+  campo: string;
+  valorAnterior: string | number | boolean | null;
+  valorNuevo: string | number | boolean | null;
+}
+
+// ✅ Interface de registro de ajuste (auditoría)
+export interface AjusteVenta {
+  _id?: string;
+  fecha: Date | string;
+  usuarioUid: string;
+  nombreUsuario: string;
+  emailUsuario: string;
+  razon: string;
+  tipoAjuste: 'correccion' | 'anulacion';
+  camposModificados: CampoModificado[];
+}
+
+// ✅ DTO para solicitar un ajuste
+export interface AjustarVentaDTO {
+  razon: string;
+  accion: 'correccion' | 'anulacion';
+  metodoPago?: MetodoPago;
+  descuento?: number;
+  observaciones?: string;
+  referenciaPago?: string;
 }

@@ -8,6 +8,7 @@ import {
   RespuestaListaVentas,
   RespuestaAPI,
   RegistrarVentaDTO,
+  AjustarVentaDTO,
 } from '@core/models/venta.model';
 import { MetodoPago } from '@core/enums';
 
@@ -251,5 +252,50 @@ export class VentasService {
           throw error;
         }),
       );
+  }
+
+  /**
+   * ✅ Ajustar una venta existente (corrección o anulación)
+   * Requiere razón obligatoria. Registra auditoría completa.
+   */
+  ajustarVenta(ventaId: string, dto: AjustarVentaDTO): Observable<Venta> {
+    return this.http
+      .patch<RespuestaAPI<Venta>>(`${this.apiUrl}/${ventaId}/ajustar`, dto)
+      .pipe(
+        map((respuesta) => {
+          if (respuesta.exito && respuesta.dato) {
+            return respuesta.dato;
+          }
+          throw new Error(respuesta.error || 'Error al ajustar la venta');
+        }),
+        catchError((error) => {
+          const mensajeError =
+            error.error?.error ||
+            error.error?.detalles?.join(', ') ||
+            error.error?.mensaje ||
+            error.message ||
+            'Error al ajustar la venta';
+          throw new Error(mensajeError);
+        }),
+      );
+  }
+
+  /**
+   * ✅ Obtener una venta individual completa (incluye historial de ajustes)
+   */
+  obtenerVenta(id: string): Observable<Venta> {
+    return this.http.get<RespuestaAPI<Venta>>(`${this.apiUrl}/${id}`).pipe(
+      map((respuesta) => {
+        if (respuesta.exito && respuesta.dato) {
+          return respuesta.dato;
+        }
+        throw new Error(respuesta.error || 'Venta no encontrada');
+      }),
+      catchError((error) => {
+        const mensajeError =
+          error.error?.error || error.message || 'Error al cargar la venta';
+        throw new Error(mensajeError);
+      }),
+    );
   }
 }

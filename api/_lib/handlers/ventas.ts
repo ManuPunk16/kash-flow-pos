@@ -2,6 +2,7 @@ import { AuthenticatedRequest } from '../tipos/AuthenticatedRequest.js';
 import { VercelResponse } from '@vercel/node';
 import { verificarAutenticacion } from '../middleware/autenticacion.js';
 import { Venta, Cliente, Producto, Usuario } from '../models/index.js';
+import type { IAjusteVenta } from '../models/Venta.js';
 import { conectarMongoDB } from '../config/database.js';
 import {
   MetodoPago,
@@ -367,7 +368,9 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           res.status(400).json({
             exito: false,
             error: 'Datos de ajuste inválidos',
-            detalles: errorValidacion.details.map((d) => d.message),
+            detalles: errorValidacion.details.map(
+              (d: { message: any }) => d.message,
+            ),
           });
           return;
         }

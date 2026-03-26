@@ -93,3 +93,23 @@ export interface AjustarVentaDTO {
   observaciones?: string;
   referenciaPago?: string;
 }
+
+// ✅ Registro aplanado de ajuste con contexto de su venta
+export interface AjusteConVenta {
+  ventaId: string;
+  numeroVenta: string;
+  nombreCliente: string;
+  total: number;
+  metodoPago: MetodoPago;
+  estado: EstadoVenta;
+  ajuste: AjusteVenta;
+}
+
+// ✅ Respuesta paginada del historial de ajustes
+export interface RespuestaHistorialAjustes {
+  ajustes: AjusteConVenta[];
+  total: number;
+  pagina: number;
+  limite: number;
+  totalPaginas: number;
+}

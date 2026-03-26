@@ -9,6 +9,8 @@ import {
   RespuestaAPI,
   RegistrarVentaDTO,
   AjustarVentaDTO,
+  AjusteConVenta, // ✅ Nuevo
+  RespuestaHistorialAjustes, // ✅ Nuevo
 } from '@core/models/venta.model';
 import { MetodoPago } from '@core/enums';
 
@@ -297,5 +299,49 @@ export class VentasService {
         throw new Error(mensajeError);
       }),
     );
+  }
+
+  /**
+   * ✅ Obtener historial centralizado de todos los ajustes (para reportes)
+   * Usa aggregation en el backend — 1 sola query
+   */
+  obtenerHistorialAjustes(filtros: {
+    pagina?: number;
+    limite?: number;
+    tipoAjuste?: 'correccion' | 'anulacion' | 'todos';
+    desde?: string;
+    hasta?: string;
+  }): Observable<RespuestaHistorialAjustes> {
+    let params = new HttpParams();
+
+    if (filtros.pagina)
+      params = params.set('pagina', filtros.pagina.toString());
+    if (filtros.limite)
+      params = params.set('limite', filtros.limite.toString());
+    if (filtros.tipoAjuste && filtros.tipoAjuste !== 'todos') {
+      params = params.set('tipoAjuste', filtros.tipoAjuste);
+    }
+    if (filtros.desde) params = params.set('desde', filtros.desde);
+    if (filtros.hasta) params = params.set('hasta', filtros.hasta);
+
+    return this.http
+      .get<
+        RespuestaAPI<RespuestaHistorialAjustes>
+      >(`${this.apiUrl}/ajustes`, { params })
+      .pipe(
+        map((respuesta) => {
+          if (respuesta.exito && respuesta.datos) {
+            return respuesta.datos;
+          }
+          throw new Error(respuesta.error || 'Error al cargar historial');
+        }),
+        catchError((error) => {
+          const mensajeError =
+            error.error?.error ||
+            error.message ||
+            'Error al cargar historial de ajustes';
+          throw new Error(mensajeError);
+        }),
+      );
   }
 }

@@ -4,9 +4,11 @@ import {
   input,
   output,
   computed,
+  signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Cliente } from '@core/models/cliente.model';
+import { environment } from '@environments/environment';
 
 @Component({
   selector: 'app-tarjeta-cliente',
@@ -21,6 +23,8 @@ export class TarjetaClienteComponent {
   onEliminar = output<string>();
   onAbono = output<Cliente>();
   onVerDetalle = output<Cliente>();
+
+  protected readonly mensajeCopiado = signal(false);
 
   protected readonly colorBorde = computed(() => {
     const cliente = this.cliente();
@@ -73,5 +77,33 @@ export class TarjetaClienteComponent {
 
   protected verDetalle(): void {
     this.onVerDetalle.emit(this.cliente());
+  }
+
+  protected copiarMensajeWhatsapp(): void {
+    const { nombre, apellido, saldoActual } = this.cliente();
+    const saldo = saldoActual.toLocaleString('es-MX');
+
+    // Datos de transferencia
+    const beneficiario = 'Luis Adrián Hernández Soto';
+    const clabe = '638180000130769710';
+    const banco = 'Nu México';
+
+    const mensaje =
+      `Hola, ${nombre} ${apellido}. 👋\n\n` +
+      `Esperamos que te encuentres muy bien. Te enviamos este recordatorio cordial sobre tu saldo pendiente de *$${saldo}* en la tiendita.\n\n` +
+      `*Información importante:* 💡\n` +
+      `Para evitar cargos adicionales, te recordamos realizar tu pago antes del día primero de cada mes. A partir de esa fecha, se aplica un cargo del 20% por concepto de retraso sobre el saldo acumulado.\n\n` +
+      `Si deseas realizar tu pago vía transferencia, aquí tienes los datos:\n` +
+      `━━━━━━━━━━━━━━━━━━\n` +
+      `👤 *Beneficiario:* ${beneficiario}\n` +
+      `🏦 *Banco:* ${banco}\n` +
+      `🔢 *CLABE:* ${clabe}\n` +
+      `━━━━━━━━━━━━━━━━━━\n\n` +
+      `También puedes liquidarlo en efectivo. ¡Muchas gracias por tu comprensión y preferencia! 😊`;
+
+    navigator.clipboard.writeText(mensaje).then(() => {
+      this.mensajeCopiado.set(true);
+      setTimeout(() => this.mensajeCopiado.set(false), 2500);
+    });
   }
 }

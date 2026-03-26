@@ -89,27 +89,29 @@
 
   <!-- Alerta de Próximo Corte de Interés -->
   @if (clientesDeudores().length > 0) {
-  <div class="bg-blue-50 border-l-4 border-blue-500 p-5 rounded-lg mb-6">
+  <div
+    class="bg-blue-50 border border-blue-200 p-5 rounded-lg mb-6 flex items-center justify-between gap-4 flex-wrap"
+  >
     <div class="flex items-start gap-3">
       <span class="text-3xl">📅</span>
-      <div class="flex-1">
+      <div>
         <h3 class="font-bold text-blue-900 text-lg mb-1">
-          Próximo Corte de Interés (20%)
+          Corte de Interés (20%)
         </h3>
-        <p class="text-blue-700">
-          <strong>Fecha:</strong> {{ proximoCorte().fecha | date: 'dd/MM/yyyy'
-          }}
-          <span class="ml-3">
-            <strong>Faltan:</strong> {{ proximoCorte().diasFaltantes }} días
-          </span>
-        </p>
-        <p class="text-blue-600 text-sm mt-2">
-          Se aplicará a
-          <strong>{{ clientesDeudores().length }}</strong> clientes con saldo
-          pendiente
+        <p class="text-blue-700 text-sm">
+          <strong>{{ clientesDeudores().length }}</strong> clientes con deuda
+          pendiente · Próximo: {{ proximoCorte().fecha | date: 'dd/MM/yyyy' }}
+          (faltan {{ proximoCorte().diasFaltantes }} días)
         </p>
       </div>
     </div>
+    <button
+      (click)="abrirModalCorteInteres()"
+      class="bg-orange-600 hover:bg-orange-700 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors flex items-center gap-2 shrink-0"
+    >
+      <span>⚡</span>
+      <span>Ejecutar Corte</span>
+    </button>
   </div>
   }
 
@@ -430,5 +432,13 @@
   [cliente]="clienteSeleccionado()!"
   (onCerrar)="cerrarDetalle()"
   (onAbono)="abrirModalAbono($event)"
+/>
+}
+
+<!-- Modal Corte de Interés -->
+@if (mostrarModalCorteInteres()) {
+<app-modal-corte-interes
+  (onCerrar)="cerrarModalCorteInteres()"
+  (onCorteEjecutado)="onCorteEjecutado()"
 />
 }

@@ -137,6 +137,77 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
           return;
         }
 
+        // GET /api/ventas/ajustes — Historial centralizado de ajustes (aggregation)
+        if (rutaVenta === '/ajustes') {
+          const { searchParams } = new URL(
+            req.url || '',
+            `http://${req.headers.host}`,
+          );
+
+          const pagina = parseInt(searchParams.get('pagina') || '1', 10);
+          const limite = Math.min(
+            parseInt(searchParams.get('limite') || '20', 10),
+            50,
+          );
+          const skip = (pagina - 1) * limite;
+          const tipoAjuste = searchParams.get('tipoAjuste'); // 'correccion' | 'anulacion'
+          const desde = searchParams.get('desde');
+          const hasta = searchParams.get('hasta');
+
+          // Filtro de fecha sobre ajuste.fecha
+          const matchAjuste: any = {};
+          if (tipoAjuste === 'correccion' || tipoAjuste === 'anulacion') {
+            matchAjuste['ajustes.tipoAjuste'] = tipoAjuste;
+          }
+          if (desde || hasta) {
+            matchAjuste['ajustes.fecha'] = {};
+            if (desde) matchAjuste['ajustes.fecha'].$gte = new Date(desde);
+            if (hasta) matchAjuste['ajustes.fecha'].$lte = new Date(hasta);
+          }
+
+          // Aggregation: desenvuelve ajustes, filtra y pagina — 1 sola query
+          const pipeline: any[] = [
+            { $match: { 'ajustes.0': { $exists: true } } },
+            { $unwind: '$ajustes' },
+            ...(Object.keys(matchAjuste).length > 0
+              ? [{ $match: matchAjuste }]
+              : []),
+            { $sort: { 'ajustes.fecha': -1 } },
+            {
+              $project: {
+                _id: 0,
+                ventaId: '$_id',
+                numeroVenta: 1,
+                nombreCliente: 1,
+                total: 1,
+                metodoPago: 1,
+                estado: 1,
+                ajuste: '$ajustes',
+              },
+            },
+          ];
+
+          // Contar total antes de paginar (pipeline sin skip/limit)
+          const [resultados, conteo] = await Promise.all([
+            Venta.aggregate([...pipeline, { $skip: skip }, { $limit: limite }]),
+            Venta.aggregate([...pipeline, { $count: 'total' }]),
+          ]);
+
+          const total = conteo[0]?.total ?? 0;
+
+          res.status(200).json({
+            exito: true,
+            datos: {
+              ajustes: resultados,
+              total,
+              pagina,
+              limite,
+              totalPaginas: Math.ceil(total / limite),
+            },
+          });
+          return;
+        }
+
         res.status(400).json({
           exito: false,
           error: 'ID de venta inválido',

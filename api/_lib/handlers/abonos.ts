@@ -16,11 +16,11 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
   res.setHeader(
     'Access-Control-Allow-Methods',
-    'GET,OPTIONS,PATCH,DELETE,POST,PUT'
+    'GET,OPTIONS,PATCH,DELETE,POST,PUT',
   );
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization',
   );
 
   // ✅ Handle preflight
@@ -57,18 +57,67 @@ export default async (req: AuthenticatedRequest, res: VercelResponse) => {
     // ✅ Routing por método
     switch (req.method) {
       case 'GET':
-        // GET /api/abonos - Obtener todos
+        // GET /api/abonos - Obtener con paginación y filtros
         if (rutaAbono === '/' || rutaAbono === '') {
-          const abonos = await AbonoCliente.find()
-            .populate('clienteId')
-            .populate('usuarioId')
-            .sort({ fechaPago: -1 })
-            .lean();
+          const { searchParams } = new URL(
+            req.url || '',
+            `http://${req.headers.host}`,
+          );
+
+          // Paginación (límite máximo 20 para respetar plan gratuito Vercel/Atlas)
+          const pagina = Math.max(
+            1,
+            parseInt(searchParams.get('pagina') || '1', 10),
+          );
+          const limite = Math.min(
+            20,
+            Math.max(1, parseInt(searchParams.get('limite') || '20', 10)),
+          );
+          const skip = (pagina - 1) * limite;
+
+          // Filtros opcionales
+          const desde = searchParams.get('desde');
+          const hasta = searchParams.get('hasta');
+          const metodoPago = searchParams.get('metodoPago');
+
+          // Construir query
+          const query: Record<string, unknown> = {};
+
+          if (desde || hasta) {
+            const rangFecha: Record<string, Date> = {};
+            if (desde) rangFecha.$gte = new Date(desde);
+            if (hasta) {
+              // Incluir todo el día "hasta"
+              const fechaHasta = new Date(hasta);
+              fechaHasta.setHours(23, 59, 59, 999);
+              rangFecha.$lte = fechaHasta;
+            }
+            query.fechaPago = rangFecha;
+          }
+
+          if (
+            metodoPago &&
+            ['efectivo', 'transferencia', 'cheque'].includes(metodoPago)
+          ) {
+            query.metodoPago = metodoPago;
+          }
+
+          const [abonos, total] = await Promise.all([
+            AbonoCliente.find(query)
+              .sort({ fechaPago: -1 })
+              .skip(skip)
+              .limit(limite)
+              .lean(),
+            AbonoCliente.countDocuments(query),
+          ]);
 
           res.status(200).json({
             exito: true,
             datos: abonos,
             cantidad: abonos.length,
+            total,
+            pagina,
+            totalPaginas: Math.ceil(total / limite),
           });
           return;
         }

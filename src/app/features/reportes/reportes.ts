@@ -9,10 +9,13 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { VentasService } from '@core/services/ventas.service';
+import { AbonosService } from '@core/services/abonos.service';
+import type { AbonoCliente } from '@core/services/abonos.service';
 import { AjusteConVenta } from '@core/models/venta.model';
 
-type SeccionReporte = 'auditoria';
+type SeccionReporte = 'auditoria' | 'abonos';
 type FiltroTipoAjuste = 'todos' | 'correccion' | 'anulacion';
+type FiltroMetodoPago = 'todos' | 'efectivo' | 'transferencia' | 'cheque';
 
 @Component({
   selector: 'app-reportes',
@@ -23,6 +26,7 @@ type FiltroTipoAjuste = 'todos' | 'correccion' | 'anulacion';
 })
 export class Reportes implements OnInit {
   private readonly ventasService = inject(VentasService);
+  private readonly abonosService = inject(AbonosService);
 
   // 🗂️ Sección activa
   protected readonly seccionActiva = signal<SeccionReporte>('auditoria');
@@ -40,12 +44,12 @@ export class Reportes implements OnInit {
   protected readonly filtroDesde = signal('');
   protected readonly filtroHasta = signal('');
 
-  // Paginación
+  // Paginación ajustes
   protected readonly totalPaginasAjustes = computed(() =>
     Math.ceil(this.totalAjustes() / this.ajustesPorPagina),
   );
 
-  // Estadísticas rápidas
+  // Estadísticas rápidas de ajustes
   protected readonly estadisticasAjustes = computed(() => {
     const lista = this.ajustes();
     return {
@@ -56,9 +60,48 @@ export class Reportes implements OnInit {
     };
   });
 
+  // ─── Historial de abonos ───
+  protected readonly abonos = signal<AbonoCliente[]>([]);
+  protected readonly loadingAbonos = signal(false);
+  protected readonly errorAbonos = signal<string | null>(null);
+  protected readonly totalAbonos = signal(0);
+  protected readonly paginaAbonos = signal(1);
+  protected readonly abonosPorPagina = 20;
+
+  // Filtros de abonos
+  protected readonly filtroMetodoPago = signal<FiltroMetodoPago>('todos');
+  protected readonly filtroAbonosDesde = signal('');
+  protected readonly filtroAbonosHasta = signal('');
+
+  // Paginación abonos
+  protected readonly totalPaginasAbonos = computed(() =>
+    Math.ceil(this.totalAbonos() / this.abonosPorPagina),
+  );
+
+  // Estadísticas rápidas de abonos
+  protected readonly estadisticasAbonos = computed(() => {
+    const lista = this.abonos();
+    return {
+      montoTotal: lista.reduce((sum, a) => sum + a.monto, 0),
+      cantidadEfectivo: lista.filter((a) => a.metodoPago === 'efectivo').length,
+      cantidadTransferencia: lista.filter(
+        (a) => a.metodoPago === 'transferencia',
+      ).length,
+    };
+  });
+
   ngOnInit(): void {
     this.cargarAjustes();
   }
+
+  protected cambiarSeccion(seccion: SeccionReporte): void {
+    this.seccionActiva.set(seccion);
+    if (seccion === 'abonos' && this.abonos().length === 0) {
+      this.cargarAbonos();
+    }
+  }
+
+  // ─── Métodos de ajustes ───
 
   protected cargarAjustes(): void {
     this.loadingAjustes.set(true);
@@ -113,5 +156,68 @@ export class Reportes implements OnInit {
       estado: 'Estado',
     };
     return etiquetas[campo] ?? campo;
+  }
+
+  // ─── Métodos de abonos ───
+
+  protected cargarAbonos(): void {
+    this.loadingAbonos.set(true);
+    this.errorAbonos.set(null);
+
+    this.abonosService
+      .obtenerHistorialPaginado({
+        pagina: this.paginaAbonos(),
+        limite: this.abonosPorPagina,
+        metodoPago: this.filtroMetodoPago(),
+        desde: this.filtroAbonosDesde() || undefined,
+        hasta: this.filtroAbonosHasta() || undefined,
+      })
+      .subscribe({
+        next: (respuesta) => {
+          this.abonos.set(respuesta.abonos);
+          this.totalAbonos.set(respuesta.total);
+          this.loadingAbonos.set(false);
+        },
+        error: (err: Error) => {
+          this.errorAbonos.set(err.message);
+          this.loadingAbonos.set(false);
+        },
+      });
+  }
+
+  protected aplicarFiltrosAbonos(): void {
+    this.paginaAbonos.set(1);
+    this.cargarAbonos();
+  }
+
+  protected limpiarFiltrosAbonos(): void {
+    this.filtroMetodoPago.set('todos');
+    this.filtroAbonosDesde.set('');
+    this.filtroAbonosHasta.set('');
+    this.paginaAbonos.set(1);
+    this.cargarAbonos();
+  }
+
+  protected cambiarPaginaAbonos(pagina: number): void {
+    this.paginaAbonos.set(pagina);
+    this.cargarAbonos();
+  }
+
+  protected obtenerIconoMetodoPago(metodo: string): string {
+    const iconos: Record<string, string> = {
+      efectivo: '💵',
+      transferencia: '🏦',
+      cheque: '📄',
+    };
+    return iconos[metodo] ?? '💳';
+  }
+
+  protected obtenerColorMetodoPago(metodo: string): string {
+    const colores: Record<string, string> = {
+      efectivo: 'bg-green-100 text-green-800',
+      transferencia: 'bg-blue-100 text-blue-800',
+      cheque: 'bg-purple-100 text-purple-800',
+    };
+    return colores[metodo] ?? 'bg-gray-100 text-gray-800';
   }
 }

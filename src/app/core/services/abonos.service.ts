@@ -28,6 +28,23 @@ interface RespuestaAPI<T> {
   cantidad?: number;
 }
 
+interface RespuestaHistorialAbonos {
+  exito: boolean;
+  datos: AbonoCliente[];
+  cantidad: number;
+  total: number;
+  pagina: number;
+  totalPaginas: number;
+}
+
+export interface FiltrosHistorialAbonos {
+  pagina?: number;
+  limite?: number;
+  desde?: string;
+  hasta?: string;
+  metodoPago?: 'todos' | 'efectivo' | 'transferencia' | 'cheque';
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -38,6 +55,38 @@ export class AbonosService {
   // Estado reactivo
   private readonly abonosCache = signal<AbonoCliente[]>([]);
   readonly abonos = this.abonosCache.asReadonly();
+
+  /**
+   * Obtener historial de abonos con paginación y filtros (optimizado para Vercel free tier)
+   */
+  obtenerHistorialPaginado(filtros: FiltrosHistorialAbonos = {}): Observable<{
+    abonos: AbonoCliente[];
+    total: number;
+    pagina: number;
+    totalPaginas: number;
+  }> {
+    const params: Record<string, string> = {};
+    params['pagina'] = String(filtros.pagina ?? 1);
+    params['limite'] = String(Math.min(20, filtros.limite ?? 20));
+    if (filtros.desde) params['desde'] = filtros.desde;
+    if (filtros.hasta) params['hasta'] = filtros.hasta;
+    if (filtros.metodoPago && filtros.metodoPago !== 'todos') {
+      params['metodoPago'] = filtros.metodoPago;
+    }
+
+    const queryString = new URLSearchParams(params).toString();
+    return this.http
+      .get<RespuestaHistorialAbonos>(`${this.apiUrl}?${queryString}`)
+      .pipe(
+        map((respuesta) => ({
+          abonos: respuesta.datos ?? [],
+          total: respuesta.total ?? 0,
+          pagina: respuesta.pagina ?? 1,
+          totalPaginas: respuesta.totalPaginas ?? 1,
+        })),
+        catchError(this.manejarError),
+      );
+  }
 
   /**
    * Obtener todos los abonos
